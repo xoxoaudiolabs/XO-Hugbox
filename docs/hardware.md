@@ -1,0 +1,102 @@
+# XO-Hugbox hardware
+
+One 2-layer PCB, a 3D-printed top plate and bottom shell, and off-the-shelf modules. Every position and dimension comes
+from one file, [`hardware/layout.py`](../hardware/layout.py); the board, plate, shell, emulator drawing and build guide are
+all generated from it.
+
+> **Status:** prototype. The design is complete but not yet built. Measure the parts listed under
+> [Check before ordering](#check-before-ordering) first.
+
+## Parts
+
+| Qty | Part | Notes |
+|---|---|---|
+| 1 | Seeed **XIAO ESP32-S3** | Must be the S3 (native USB MIDI, 8 MB PSRAM). U.FL antenna stuck to the inside of a wall. |
+| 1 | **PCF8574T** I/O expander module | P0-P7 header into the board. Desolder the pass-through socket; replace the address jumper caps with solder bridges. The I2C pins go to the 2×2 "PCF I2C" pads with short wires. |
+| 1 | **MAX98357A** I2S amp (generic 7-pin: LRC BCLK DIN GAIN SD GND VIN) | Header from the plain side, printed side facing the floor. GAIN floating = 9 dB, SD default (on, L+R mono). |
+| 1 | **PCM5102A** I2S DAC (purple module) | Printed side down along the right wall, jack out of the right wall. Jumpers: FLT L, DEMP L, XSMT H, FMT L. SCK is tied to GND on the PCB. |
+| 1 | 1.3" **SH1106** I2C OLED, 128×64 (36×34 mm, GND VCC SCK SDA) | Remove the header plastic; solder 0.8 mm above the board. |
+| 4 | WH148 **B10K** 16 mm pots + 14 mm knobs | Pins facing the keys. |
+| 17 | MX switches + 17 1u keycaps | 16 pads + shift. |
+| 16 | 1N4148 diodes | One per pad. |
+| 2 | 100 kΩ resistors | Battery voltage divider (R1, R2). |
+| 1 | 3 W 8 Ω box speaker, 28.2×31×15.3 mm | Screwed to two shell posts (M2.5 self-tapping), face against the plate grille. |
+| 1 | LP102540 1100 mAh LiPo with protection board | In the shell cradle under the keys. |
+| 1 | 12D00G-5mm slide switch | Power; actuator through the plate. |
+| 4 | M3×12 countersunk screws | Corners. The fifth hole (knob strip) is a support post only: no screw, solid plate above. |
+| 5 | 1 mm spacers | Between PCB and plate. |
+| 2 | M2.5×6 self-tapping screws | Speaker. |
+| - | Thin hook-up wire | PCF I2C jumpers, XIAO battery leads. |
+
+Target: under $50 in parts per unit.
+
+## Check before ordering
+
+These dimensions are estimates in `hardware/layout.py`. Measure your actual parts and update the file if they differ:
+
+1. Pot pin pitch 5.0 mm (`POT_PITCH`) and can height ~7 mm (`POT_BODY_H`).
+2. OLED 4-pin header centred on the module, ~2.6 mm from its edge (`OLED_HDR_FROM_EDGE`).
+3. PCM5102A module 33 × 17.5 mm, jack barrel 4.7 mm from its end (`PCM_LEN`, `PCM_W`, `JACK_FROM_END`).
+4. Speaker ear-hole spacing ~37 mm, ears about halfway down the 15.3 mm body (`SPK_EAR_PITCH`, `SPK_EAR_DROP`). Shell only.
+
+## Ordering the PCB
+
+- **v1:** [`hardware/pcb/xo_hugbox_gerbers.zip`](../hardware/pcb/xo_hugbox_gerbers.zip). 2 layers, 1.6 mm, HASL lead-free.
+  **The oval pot-pin slots must stay plated:** say so in the order notes.
+- **v1.1:** [`hardware/pcb/xo_hugbox_v11_gerbers.zip`](../hardware/pcb/xo_hugbox_v11_gerbers.zip). Same parts and outline; gives the
+  speaker amp its own I2S data line so the speaker can be filtered separately. Pending a breadboard test; see
+  [speaker-path-plan.md](speaker-path-plan.md). Until that passes, v1 is the safe choice.
+
+The board has **no reverse-polarity protection** on the battery input: check the LiPo's polarity with a meter.
+
+## Printing
+
+- Plate: [`hardware/mechanical/xo_hugbox_top_plate.stl`](../hardware/mechanical/xo_hugbox_top_plate.stl). Use a layer height that
+  divides 1.5 mm (0.15 / 0.25 / 0.3 mm) so the MX clip ledge comes out exact. Print one switch hole as a test first.
+- Shell: [`hardware/mechanical/xo_hugbox_shell.stl`](../hardware/mechanical/xo_hugbox_shell.stl).
+
+## Assembly
+
+Follow the interactive 3D guide, [`docs/build-guide/index.html`](build-guide/index.html). The order, in short:
+
+1. Diodes and the divider resistors (back).
+2. XIAO (back): first solder ~4 cm battery leads to the XIAO's own BAT+/BAT- pads (unreachable once mounted), then mount it
+   and run the leads to J13.
+3. MAX98357A, then the PCF8574T module (back).
+4. Switches snapped into the plate.
+5. Pots, OLED and power switch on top **before** the plate: they sit under it, and the plate pockets set the OLED height.
+6. Plate (with switches) onto the PCB over the spacers; solder the switches from below.
+7. Clip the pins under the PCM5102A area flush (shift and power switch), **then** fit the PCM5102A.
+8. Speaker onto the shell posts.
+9. LiPo into the cradle, leads to J11 from the back, power switch OFF, polarity checked. Plug in the antenna.
+10. Board and plate into the shell (4× M3×12), keycaps and knobs, then the first power-on with the bring-up firmware.
+
+## First power-on
+
+Flash the bring-up test (`pio run -e bringup -t upload` in `firmware/`) and open the serial monitor. It scans I2C
+(expect `0x3C` OLED and `0x20` PCF8574), shows every pad, knob and the battery voltage, and plays a tone through both
+outputs. Then flash the instrument (`pio run -e hugbox -t upload`); its serial output reports the audio load every 5 s.
+
+## Regenerating the hardware files
+
+Everything is scripted. The scripts import `hardware/layout.py`, so run them from their own folder with `PYTHONPATH=..`.
+
+| Step | Tool | Command |
+|---|---|---|
+| Plate + shell `.scad` | Python | `cd hardware/mechanical && PYTHONPATH=.. python gen_scad.py` (then export STLs in OpenSCAD) |
+| Assembly scene | Python | `cd hardware/mechanical && PYTHONPATH=.. python gen_assembly.py` |
+| Place parts, nets, DSN | KiCad 7 Python (`pcbnew`) | `cd hardware/pcb && PYTHONPATH=.. python3 build.py` (`HUGBOX_REV=1.1` for v1.1) |
+| Autoroute | [Freerouting](https://github.com/freerouting/freerouting) 2.1.0, Java 21 | `java -jar freerouting-2.1.0.jar --gui.enabled=false -de xo_hugbox.dsn -do xo_hugbox.ses -mp 100` |
+| Import routes | KiCad 7 Python | `python3 import_ses.py xo_hugbox_placed.kicad_pcb xo_hugbox.ses xo_hugbox_routed.kicad_pcb` |
+| Clean up stubs | KiCad 7 Python | `PYTHONPATH=.. python3 finalize.py`, then `FINALIZE_AGAIN=1 python3 finalize.py` until it prints `removed 0` |
+| Check | KiCad 7 Python | `python3 drc_summary.py xo_hugbox.kicad_pcb` · `python3 compare_boards.py <a> <b>` |
+| Gerbers | KiCad 7 Python | `python3 plot_gerbers.py [board] [zip]` |
+
+Notes:
+- KiCad 7 with its footprint library (`kicad`, `kicad-footprints` on Ubuntu 24.04) is enough; the scripts don't use the GUI.
+  `kicad-cli` 7 has no DRC, so the scripts call `pcbnew.WriteDRCReport`.
+- KiCad 7 can't import SES files from standalone Python, hence `import_ses.py`.
+- A fresh DRC load uses KiCad's 0.5 mm copper-to-edge default, so v1 reports a few tracks at 0.45 mm from the top edge;
+  that is well within normal fab limits.
+- After any hardware change, regenerate the build guide data (`docs/build-guide/tools/`) and the emulator layout
+  (`python sim/gen_layout.py`).

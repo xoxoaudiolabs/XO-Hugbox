@@ -1,0 +1,593 @@
+// XO-Hugbox emulator - browser "platform layer".
+// The app logic lives in C++ (sim/core, shared with the firmware) and runs as WASM (hugbox_core.js).
+// This file only does what the board's platform code does: sample the controls, run loop(),
+// stream audio blocks to the output, and show the SH1106 RAM on screen.
+(() => {
+  'use strict';
+  const L = window.HUGBOX_LAYOUT;
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const $ = (id) => document.getElementById(id);
+  const Y = (y) => L.H - y;   // plate y-up -> svg y-down
+
+  // ---------------- hardware state (what the platform samples) ----------------
+  const hw = {
+    pads: 0,                       // bit n = pad n held, from mouse/touch
+    keyPads: 0,                    // bit n = pad n held, from the keyboard
+    shiftMouse: false, shiftKey: false,
+    pots: [2600, 2048, 2048, 2048],   // raw ADC 0..4095
+    vbat: 3.92,
+    power: true,
+    oledOk: true, pcfOk: true,
+  };
+
+  // ---------------- device drawing (top view, to scale, from hardware/layout.py) ----------------
+  const svg = $('device');
+  const M = 4;   // margin in mm for wall features
+  svg.setAttribute('viewBox', `${-M} ${-M} ${L.W + 2 * M} ${L.H + 2 * M}`);
+  const el = (tag, attrs, parent = svg) => {
+    const e = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    parent.appendChild(e);
+    return e;
+  };
+  const defs = el('defs', {});
+  defs.innerHTML = `
+    <linearGradient id="plateG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6f3ea"/><stop offset="1" stop-color="#e2ddd0"/></linearGradient>
+    <radialGradient id="knobG" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#4a4a4a"/><stop offset="1" stop-color="#1c1c1c"/></radialGradient>
+    <linearGradient id="capG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfaf6"/><stop offset="1" stop-color="#dcd8cd"/></linearGradient>
+    <linearGradient id="capS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f39a55"/><stop offset="1" stop-color="#d0631c"/></linearGradient>`;
+
+  // wall features: USB-C (XIAO) on the left wall, 3.5 mm jack (PCM5102A) on the right wall
+  el('rect', { x: -1.6, y: Y(L.XIAO_C[1]) - 4.6, width: 2.2, height: 9.2, rx: 1, fill: '#3a3d42' });
+  el('text', { x: -2.4, y: Y(L.XIAO_C[1]), 'font-size': 2.3, fill: '#8a8f96', 'text-anchor': 'middle',
+    transform: `rotate(-90 -2.4 ${Y(L.XIAO_C[1])})` }).textContent = 'USB-C';
+  el('rect', { x: L.W - 0.6, y: Y(L.JACK_Y) - 3, width: 2.2, height: 6, rx: 1, fill: '#3a3d42' });
+  el('text', { x: L.W + 2.6, y: Y(L.JACK_Y), 'font-size': 2.3, fill: '#8a8f96', 'text-anchor': 'middle',
+    transform: `rotate(90 ${L.W + 2.6} ${Y(L.JACK_Y)})` }).textContent = 'LINE';
+
+  el('rect', { x: 0, y: 0, width: L.W, height: L.H, rx: 3, fill: 'url(#plateG)', stroke: '#bdb7a8', 'stroke-width': 0.3 });
+  // raised strip over the pots
+  el('rect', { x: L.cx[0] - 10.4, y: Y(L.POT_Y + 10.4), width: L.W - 3 - (L.cx[0] - 10.4), height: 20.8, rx: 2,
+    fill: '#ece7da', stroke: '#c9c2b2', 'stroke-width': 0.25 });
+
+  // screws (countersunk M3); SUPPORT_ONLY holes are hidden support posts under a solid plate
+  const support = new Set(L.SUPPORT_ONLY || []);
+  for (const [i, [x, y]] of L.HOLES.entries()) {
+    if (support.has(i)) continue;
+    el('circle', { cx: x, cy: Y(y), r: 3.0, fill: '#b9bcc0', stroke: '#8d9095', 'stroke-width': 0.25 });
+    el('path', { d: `M${x - 1.6} ${Y(y)}h3.2M${x} ${Y(y) - 1.6}v3.2`, stroke: '#6f7277', 'stroke-width': 0.45 });
+  }
+
+  // speaker grille
+  for (let dx = -10; dx <= 10; dx += 4) for (let dy = -10; dy <= 10; dy += 4)
+    if (dx * dx + dy * dy <= 100) el('circle', { cx: L.SPK_C[0] + dx, cy: Y(L.SPK_C[1] + dy), r: 1, fill: '#2b2b2b' });
+
+  // OLED: window in the plate, glass, then the 128x64 active area (29.42 x 14.7 mm on a 1.3" SH1106)
+  const [ox, oy] = L.OLED_C;
+  el('rect', { x: ox - 15.25, y: Y(oy + L.OLED_WIN_OFF + 7.75), width: 30.5, height: 15.5, rx: 0.6, fill: '#050608' });
+  const AW = 29.42, AH = 14.7;
+  const fo = el('foreignObject', { x: ox - AW / 2, y: Y(oy + L.OLED_WIN_OFF + AH / 2), width: AW, height: AH });
+  const oledCanvas = document.createElement('canvas');
+  oledCanvas.width = 128; oledCanvas.height = 64;
+  oledCanvas.style.cssText = 'width:100%;height:100%;display:block;image-rendering:pixelated;';
+  fo.appendChild(oledCanvas);
+  const octx = oledCanvas.getContext('2d');
+  const zctx = $('oledZoom').getContext('2d');
+  zctx.imageSmoothingEnabled = false;
+  const mirrorZoom = () => zctx.drawImage(oledCanvas, 0, 0, 512, 256);
+
+  // power slide switch (12D00G), actuator through the plate
+  const [px, py] = L.PWR;
+  el('rect', { x: px - 2.15, y: Y(py) - 1.05, width: 4.3, height: 2.1, rx: 0.4, fill: '#1a1a1a' });
+  const pwrKnob = el('rect', { x: px - 0.75, y: Y(py) - 0.75, width: 1.5, height: 1.5, fill: '#d9d9d9', style: 'cursor:pointer' });
+  const pwrHit = el('rect', { x: px - 5, y: Y(py) - 3, width: 10, height: 6, fill: 'transparent', style: 'cursor:pointer' });
+  const pwrLabel = el('text', { x: px, y: Y(py) - 2.4, 'font-size': 2.2, fill: '#7d7a72', 'text-anchor': 'middle' });
+
+  // knobs
+  const knobs = [];
+  for (let i = 0; i < 4; i++) {
+    const g = el('g', { style: 'cursor:ns-resize' });
+    const x = L.cx[i], y = Y(L.POT_Y);
+    el('circle', { cx: x, cy: y, r: 5.5, fill: '#9a9a9a' }, g);           // nut
+    el('circle', { cx: x, cy: y, r: 7.17, fill: 'url(#knobG)', stroke: '#111', 'stroke-width': 0.3 }, g);
+    el('circle', { cx: x, cy: y, r: 6, fill: '#bbbbbb', opacity: 0.18 }, g);
+    const ind = el('line', { x1: x, y1: y - 1.5, x2: x, y2: y - 6, stroke: '#f4f4f4', 'stroke-width': 0.9, 'stroke-linecap': 'round' }, g);
+    const t = el('title', {}, g);
+    // scale ticks
+    for (let a = -150; a <= 150; a += 30) {
+      const r = (a - 90) * Math.PI / 180;
+      el('line', { x1: x + Math.cos(r) * 8.1, y1: y + Math.sin(r) * 8.1, x2: x + Math.cos(r) * 9.0, y2: y + Math.sin(r) * 9.0,
+        stroke: '#a49d8c', 'stroke-width': 0.3 }, g);
+    }
+    knobs.push({ g, ind, t, x, y });
+  }
+
+  // keys: 16 pads (row 0 = top) + shift
+  const KEYS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyQ', 'KeyW', 'KeyE', 'KeyR',
+                'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyZ', 'KeyX', 'KeyC', 'KeyV'];
+  const KEYLABEL = ['1', '2', '3', '4', 'Q', 'W', 'E', 'R', 'A', 'S', 'D', 'F', 'Z', 'X', 'C', 'V'];
+  const NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const noteName = (n) => NOTE[n % 12] + (4 + Math.floor(n / 12));
+  const keyEls = [];
+  const makeKey = (x, y, shift, label, sub) => {
+    const g = el('g', { style: 'cursor:pointer' });
+    el('rect', { x: x - 7.5, y: Y(y) - 7.5, width: 15, height: 15, fill: '#2a2a2a' }, g);         // switch hole shadow
+    const cap = el('rect', { x: x - 9, y: Y(y) - 9, width: 18, height: 18, rx: 1.6,
+      fill: shift ? 'url(#capS)' : 'url(#capG)', stroke: shift ? '#a04b13' : '#bcb6a6', 'stroke-width': 0.3 }, g);
+    const top = el('rect', { x: x - 6.6, y: Y(y) - 7.4, width: 13.2, height: 13.2, rx: 1.4,
+      fill: shift ? '#f0874a' : '#f7f5ef', opacity: 0.85 }, g);
+    const labEl = el('text', { x: x - 5.4, y: Y(y) - 3.8, 'font-size': 2.6, fill: shift ? '#3a1b05' : '#8b8577', 'font-family': 'monospace' }, g);
+    labEl.textContent = label;
+    const subEl = el('text', { x: x + 5.6, y: Y(y) + 4.6, 'font-size': 2.4, fill: shift ? '#3a1b05' : '#b0a998', 'text-anchor': 'end' }, g);
+    subEl.textContent = sub;
+    return { g, cap, top, sub: subEl, lab: labEl };
+  };
+  for (let n = 0; n < 16; n++) {
+    const r = n >> 2, c = n & 3;
+    const k = makeKey(L.cx[c], L.cy[3 - r], false, KEYLABEL[n], noteName(n));
+    k.n = n; keyEls.push(k);
+  }
+  const shiftEl = makeKey(L.SHIFT[0], L.SHIFT[1], true, '⇧', 'SHIFT');
+  // firmware picker: 0 = main UI (sim/core/main_app), 1 = bring-up (port of firmware/src/bringup/main.cpp)
+  const fw = () => +$('fwSel').value;
+  // shift legends, as they would be printed on the keycap fronts
+  const SHIFT_LEGEND = ['PLAY', 'SEQ', 'SOUND', 'FX', 'PG 1', 'PG 2', 'PG 3', 'PG 4',
+                        'DRUM', 'SYNTH', 'RUN', 'REC', 'STD', 'CTL', 'LAYER', 'SET'];
+  function setLegends() {
+    const main = fw() === 0;
+    keyEls.forEach((k) => {
+      k.sub.textContent = main ? SHIFT_LEGEND[k.n] : noteName(k.n);
+      k.sub.setAttribute('fill', main ? '#d0662a' : '#b0a998');
+    });
+    const km = $('keymap');
+    km.innerHTML = '';
+    for (let n = 0; n < 16; n++) {
+      const sp = document.createElement('span');
+      sp.innerHTML = `<b>${KEYLABEL[n]}</b> pad ${n} ${main ? '⇧ ' + SHIFT_LEGEND[n] : noteName(n)}`;
+      km.appendChild(sp);
+    }
+    $('fwNote').style.display = main ? '' : 'none';
+    $('bringNote').style.display = main ? 'none' : '';
+  }
+
+  // ---------------- input handling ----------------
+  const pointerPad = new Map();   // pointerId -> pad index (or 'shift')
+  const setPointer = (id, what) => {
+    pointerPad.set(id, what);
+    recomputePointer();
+  };
+  const recomputePointer = () => {
+    let bits = 0, sh = false;
+    for (const v of pointerPad.values()) { if (v === 'shift') sh = true; else bits |= 1 << v; }
+    hw.pads = bits; hw.shiftMouse = sh;
+    paintKeys();
+  };
+  keyEls.forEach((k) => {
+    k.g.addEventListener('pointerdown', (e) => { e.preventDefault(); k.g.setPointerCapture(e.pointerId); setPointer(e.pointerId, k.n); });
+  });
+  shiftEl.g.addEventListener('pointerdown', (e) => { e.preventDefault(); shiftEl.g.setPointerCapture(e.pointerId); setPointer(e.pointerId, 'shift'); });
+  const release = (e) => { if (pointerPad.delete(e.pointerId)) recomputePointer(); };
+  svg.addEventListener('pointerup', release);
+  svg.addEventListener('pointercancel', release);
+
+  window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox' && e.target.type !== 'range') return;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { hw.shiftKey = true; paintKeys(); return; }
+    const n = KEYS.indexOf(e.code);
+    if (n >= 0 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); hw.keyPads |= 1 << n; paintKeys(); }
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { hw.shiftKey = false; paintKeys(); return; }
+    const n = KEYS.indexOf(e.code);
+    if (n >= 0) { hw.keyPads &= ~(1 << n); paintKeys(); }
+  });
+  window.addEventListener('blur', () => { hw.keyPads = 0; hw.shiftKey = false; paintKeys(); });
+
+  const padBits = () => hw.pads | hw.keyPads;
+  const shiftHeld = () => hw.shiftMouse || hw.shiftKey;
+  // Synth notes on the pads: keycaps take piano colours (sharps dark, naturals light) so you can see the
+  // black and white keys. Emulator-only aid; the real keycaps don't change.
+  let padNotes = new Array(16).fill(-1), padNotesKey = '';
+  const isBlack = (n) => n >= 0 && [1, 3, 6, 8, 10].includes(n % 12);
+  function updatePadNotes() {
+    const notes = [];
+    for (let n = 0; n < 16; n++) notes.push(core && hw.power && fw() === 0 ? core._hb_pad_note(n) : -1);
+    const key = notes.join(',');
+    if (key === padNotesKey) return;
+    padNotesKey = key;
+    padNotes = notes;
+    paintKeys();
+  }
+  // ---------------- MIDI: monitor + optional WebMIDI ----------------
+  const NOTE_N = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const nn = (n) => NOTE_N[n % 12] + (Math.floor(n / 12) - 1);
+  const midiLines = [];
+  let clocksOut = 0, clocksIn = 0, midiOutPort = null, midiAccess = null;
+  function describe(m) {
+    const s = m[0], ch = (s & 15) + 1;
+    switch (s & 0xf0) {
+      case 0x90: return m[2] ? `note on  ch${ch} ${nn(m[1])} (${m[1]}) vel ${m[2]}` : `note off ch${ch} ${nn(m[1])} (${m[1]})`;
+      case 0x80: return `note off ch${ch} ${nn(m[1])} (${m[1]})`;
+      case 0xb0: return `CC ${m[1]} = ${m[2]}  ch${ch}`;
+    }
+    return { 0xfa: 'START', 0xfb: 'CONTINUE', 0xfc: 'STOP' }[s] || m.map((x) => x.toString(16)).join(' ');
+  }
+  function midiLog(dir, m) {
+    if (m[0] === 0xf8) { if (dir === 'out') clocksOut++; else clocksIn++; return; }   // clocks: counted, not listed
+    midiLines.push(`${dir === 'out' ? '→' : '←'} ${describe(m)}`);
+    if (midiLines.length > 60) midiLines.splice(0, midiLines.length - 60);
+    const el = $('midiLog');
+    el.textContent = midiLines.join('\n');
+    el.scrollTop = el.scrollHeight;
+  }
+  function midiFromDevice(m) {                 // the Hugbox sends
+    midiLog('out', m);
+    if (midiOutPort) try { midiOutPort.send(m); } catch (e) {}
+  }
+  function midiToDevice(m) {                   // into the Hugbox (as USB)
+    if (!core || !hw.power) return;
+    midiLog('in', m);
+    core._hb_midi_in(0, m[0], m[1] || 0, m[2] || 0, m.length);
+  }
+  setInterval(() => { $('midiClock').textContent = `clock out ${clocksOut} · in ${clocksIn}`; }, 250);
+  $('midiTestNote').addEventListener('click', () => { midiToDevice([0x90, 60, 100]); setTimeout(() => midiToDevice([0x80, 60, 0]), 400); });
+  $('midiTestDrum').addEventListener('click', () => { midiToDevice([0x99, 38, 110]); setTimeout(() => midiToDevice([0x89, 38, 0]), 100); });
+  function fillPorts() {
+    const fill = (sel, ports, none) => {
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">${none}</option>` +
+        [...ports.values()].map((p) => `<option value="${p.id}">${(p.name || p.id).replace(/</g, '&lt;')}</option>`).join('');
+      sel.value = [...ports.keys()].includes(cur) ? cur : '';
+    };
+    fill($('midiOutSel'), midiAccess.outputs, '(monitor only)');
+    fill($('midiInSel'), midiAccess.inputs, '(none)');
+  }
+  $('midiConnect').addEventListener('click', async () => {
+    if (!navigator.requestMIDIAccess) { $('midiState').textContent = 'this browser has no Web MIDI (try Chrome or Edge)'; return; }
+    try {
+      midiAccess = await navigator.requestMIDIAccess();
+      midiAccess.onstatechange = fillPorts;
+      fillPorts();
+      $('midiState').textContent = `${midiAccess.outputs.size} out · ${midiAccess.inputs.size} in`;
+    } catch (e) { $('midiState').textContent = 'MIDI access was not allowed'; }
+  });
+  $('midiOutSel').addEventListener('change', () => { midiOutPort = midiAccess && midiAccess.outputs.get($('midiOutSel').value) || null; });
+  let midiInPort = null;
+  $('midiInSel').addEventListener('change', () => {
+    if (midiInPort) midiInPort.onmidimessage = null;
+    midiInPort = midiAccess && midiAccess.inputs.get($('midiInSel').value) || null;
+    if (midiInPort) midiInPort.onmidimessage = (ev) => midiToDevice([...ev.data].slice(0, 3));
+  });
+
+  // ---------------- projects (localStorage) ----------------
+  function projectState() {
+    let n = 0, auto = false;
+    try { localStorage.getItem('hugbox-project-0'); } catch (e) {
+      $('projState').textContent = 'this page can’t store data here (no origin) - open sim/index.html directly in Chrome/Edge to keep projects';
+      return;
+    }
+    try { for (let s = 0; s <= 8; s++) if (localStorage.getItem('hugbox-project-' + s)) { if (s) n++; else auto = true; } } catch (e) {}
+    $('projState').textContent = `${auto ? 'autosave on file' : 'no autosave yet'} · ${n} of 8 slots used`;
+  }
+  function projectSaved() { projectState(); }
+  $('projClear').addEventListener('click', () => {
+    if (!confirm('Delete the autosave and all 8 saved slots in this browser?')) return;
+    try { for (let s = 0; s <= 8; s++) localStorage.removeItem('hugbox-project-' + s); } catch (e) {}
+    projectState();
+    if (hw.power) boot();
+  });
+  projectState();
+
+  // ---------------- guide: live knob map ----------------
+  const VIEW_NAMES = ['PLAY', 'SEQ', 'SOUND', 'FX', 'SETTINGS'];
+  let guideKey = '', guideT = 0;
+  function updateGuide() {
+    const now = performance.now();
+    if (now - guideT < 150) return;
+    guideT = now;
+    const table = $('gKnobs'), tag = $('gViewTag');
+    if (!core || !hw.power || fw() !== 0) {
+      if (guideKey !== 'off') {
+        guideKey = 'off'; tag.textContent = '';
+        table.innerHTML = `<tr><td colspan="3" class="note">${fw() === 0 ? 'Power on to see the live knob map.' : 'Shown for the Main UI firmware.'}</td></tr>`;
+      }
+      return;
+    }
+    const s = (p) => core.UTF8ToString(p);
+    const rows = [];
+    for (let slot = 0; slot < 8; slot++) {
+      const id = core._hb_knob_param(slot);
+      if (id === 255) continue;
+      rows.push([slot, s(core._hb_param_label(id)), s(core._hb_param_name(id)), s(core._hb_param_text(id))]);
+    }
+    const view = core._hb_view(), track = core._hb_track();
+    const label = `${VIEW_NAMES[view] || ''} · ${track === 0 ? 'drum' : 'synth'}`;
+    const key = label + JSON.stringify(rows);
+    if (key === guideKey) return;
+    guideKey = key;
+    tag.textContent = label;
+    table.innerHTML = rows.map(([slot, lab, name, val]) =>
+      `<tr class="${slot >= 4 ? 'shiftrow' : ''}"><td>${slot >= 4 ? 'Shift + ' : ''}knob ${(slot % 4) + 1}</td>` +
+      `<td><span class="lbl">${lab}</span> ${name}</td><td class="v">${val}</td></tr>`).join('');
+  }
+
+  function paintKeys() {
+    const b = padBits();
+    keyEls.forEach((k) => {
+      const on = (b >> k.n) & 1;
+      const black = isBlack(padNotes[k.n]);
+      k.top.setAttribute('fill', black ? (on ? '#4a4a4f' : '#26262a') : (on ? '#d9d3c3' : '#f7f5ef'));
+      k.cap.setAttribute('fill', black ? '#151517' : 'url(#capG)');
+      k.lab.setAttribute('fill', black ? '#c9c6bd' : '#8b8577');
+      k.sub.setAttribute('fill', fw() === 0 ? (black ? '#f0874a' : '#d0662a') : (black ? '#c9c6bd' : '#b0a998'));
+      k.g.setAttribute('transform', on ? `translate(0 0.5)` : '');
+    });
+    const s = shiftHeld();
+    shiftEl.top.setAttribute('fill', s ? '#c75a16' : '#f0874a');
+    shiftEl.g.setAttribute('transform', s ? 'translate(0 0.5)' : '');
+  }
+
+  // knobs: vertical drag or wheel; 300 degree travel, clockwise = higher (as wired on the PCB)
+  knobs.forEach((k, i) => {
+    let drag = null;
+    k.g.addEventListener('pointerdown', (e) => { e.preventDefault(); k.g.setPointerCapture(e.pointerId); drag = { y: e.clientY, v: hw.pots[i] }; });
+    k.g.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const fine = e.shiftKey ? 0.25 : 1;
+      hw.pots[i] = Math.max(0, Math.min(4095, Math.round(drag.v + (drag.y - e.clientY) * 18 * fine)));
+      paintKnobs();
+    });
+    k.g.addEventListener('pointerup', () => { drag = null; });
+    k.g.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      hw.pots[i] = Math.max(0, Math.min(4095, hw.pots[i] - Math.sign(e.deltaY) * 128));
+      paintKnobs();
+    }, { passive: false });
+  });
+  function paintKnobs() {
+    knobs.forEach((k, i) => {
+      const a = -150 + 300 * hw.pots[i] / 4095;
+      k.ind.setAttribute('transform', `rotate(${a} ${k.x} ${k.y})`);
+      k.t.textContent = `POT${i} (D${i}) raw ${hw.pots[i]}` + (i === 0 ? ' - volume' : '');
+    });
+  }
+
+  pwrHit.addEventListener('click', () => setPower(!hw.power));
+
+  // ---------------- WASM core ----------------
+  let core = null, bootT0 = 0;
+  const serial = $('serial');
+  let serialBuf = '';
+  const log = (s) => {
+    serialBuf += s;
+    if (serialBuf.length > 20000) serialBuf = serialBuf.slice(-15000);
+    serial.textContent = serialBuf;
+    serial.scrollTop = serial.scrollHeight;
+  };
+
+  async function boot() {
+    // a reset re-instantiates the module: fresh statics, exactly like a power cycle
+    core = null;
+    const c = await createHugboxCore({ onLog: log, onMidiOut: midiFromDevice, onProjectSaved: projectSaved });
+    bootT0 = performance.now();
+    hw.oledOk = !$('noOled').checked;
+    hw.pcfOk = !$('noPcf').checked;
+    // setup() output that lives in the firmware's platform code
+    log(fw() === 0 ? '\n=== XO-Hugbox ===\n' : '\n=== XO-Hugbox bring-up ===\n');
+    log('Chip ESP32-S3 rev 0, flash 8 MB, PSRAM 8192 KB   (emulated values)\n');
+    log('I2C scan:\n');
+    const found = [];
+    if (hw.pcfOk) found.push(0x20);
+    if (hw.oledOk) found.push(0x3C);
+    for (const a of found) log('  0x' + a.toString(16).toUpperCase().padStart(2, '0') + '\n');
+    if (!found.length) log('  nothing found - check SDA/SCL wires to the PCF I2C pads and OLED\n');
+    log(`  OLED 0x3C: ${hw.oledOk ? 'OK' : 'MISSING'}   PCF8574 0x20: ${hw.pcfOk ? 'OK' : 'MISSING'}\n`);
+    log('I2S running at 44.1 kHz\n');
+    c._hb_init(hw.oledOk ? 1 : 0, hw.pcfOk ? 1 : 0, fw());
+    core = c;
+    if (!hw.oledOk) clearOled();
+  }
+
+  function pushInputs() {
+    if (!core) return;
+    const vsenseMv = Math.round(hw.vbat * 1000 / 2);   // 100k/100k divider
+    core._hb_set_inputs(padBits(), shiftHeld() ? 1 : 0, hw.pots[0], hw.pots[1], hw.pots[2], hw.pots[3], vsenseMv);
+  }
+
+  // control loop: the firmware loop() spins freely; 2 ms here is plenty for its 5 ms / 100 ms timers
+  setInterval(() => {
+    if (!core || !hw.power) return;
+    pushInputs();
+    core._hb_loop((performance.now() - bootT0) >>> 0);
+  }, 2);
+
+  // ---------------- OLED ----------------
+  let lastFrame = -1;
+  const img = octx.createImageData(128, 64);
+  const ON = [232, 244, 255], OFF = [6, 8, 12];
+  function clearOled() {
+    octx.fillStyle = 'rgb(6,8,12)'; octx.fillRect(0, 0, 128, 64); lastFrame = -1; mirrorZoom();
+  }
+  function drawOled() {
+    if (!core || !hw.power || !hw.oledOk) return;
+    const f = core._hb_frames();
+    if (f === lastFrame && !drawOled.force) return;
+    lastFrame = f; drawOled.force = false;
+    const p = core._hb_panel();
+    const ram = core.HEAPU8.subarray(p, p + 1024);
+    const raw = $('rawPanel').checked;
+    // brightness setting -> panel contrast; OLED contrast dims the lit pixels, it never lifts black
+    const b = 0.35 + 0.65 * core._hb_brightness() / 100;
+    const ONb = [ON[0] * b, ON[1] * b, ON[2] * b];
+    for (let y = 0; y < 64; y++) for (let x = 0; x < 128; x++) {
+      // SH1106 RAM: page = y/8, bit = y%8, column = x (panel orientation).
+      // The module is mounted upside down (header toward the knobs), so panel pixel (x, y)
+      // appears at (127-x, 63-y) to the player. U8G2_R2 pre-rotates so the result reads upright.
+      const on = (ram[(y >> 3) * 128 + x] >> (y & 7)) & 1;
+      const sx = raw ? x : 127 - x, sy = raw ? y : 63 - y;
+      const i = (sy * 128 + sx) * 4, c = on ? ONb : OFF;
+      img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    mirrorZoom();
+  }
+  $('rawPanel').addEventListener('change', () => { drawOled.force = true; });
+
+  // ---------------- audio ----------------
+  let audioBlocks = 0;
+  let ac = null, sp = null, lineOut, spkIn, spkOut, master, analyser;
+  function startAudio() {
+    if (ac) return;
+    try { ac = new AudioContext({ sampleRate: 44100 }); } catch (e) { ac = new AudioContext(); }
+    // ScriptProcessor keeps everything on one thread with the WASM instance (works from file://).
+    // 1024 frames = 8 firmware blocks of 128; latency ~23 ms on top of the browser's own.
+    sp = ac.createScriptProcessor(1024, 0, 2);
+    sp.onaudioprocess = (ev) => {
+      audioBlocks++;
+      const L0 = ev.outputBuffer.getChannelData(0), R0 = ev.outputBuffer.getChannelData(1);
+      if (!core || !hw.power) { L0.fill(0); R0.fill(0); return; }
+      const p = core._hb_render(1024) >> 1;
+      const h = core.HEAP16;
+      for (let i = 0; i < 1024; i++) { L0[i] = h[p + 2 * i] / 32768; R0[i] = h[p + 2 * i + 1] / 32768; }
+    };
+    master = ac.createGain();
+    lineOut = ac.createGain();
+    // rough small-speaker model: the 28 x 31 mm box has little below ~350 Hz and rolls off above ~9 kHz
+    spkIn = ac.createGain();
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 350; hp.Q.value = 0.9;
+    const pk = ac.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 2500; pk.gain.value = 4; pk.Q.value = 1;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000;
+    spkIn.connect(hp); hp.connect(pk); pk.connect(lp); spkOut = lp;
+    analyser = ac.createAnalyser(); analyser.fftSize = 2048;
+    sp.connect(analyser);
+    lineOut.connect(master); spkOut.connect(master);
+    master.connect(ac.destination);
+    routeAudio();
+    setMonitor();
+    if (sinkSel.value) applySink();
+    if (ac.sampleRate !== 44100) log(`[emulator] audio device runs at ${ac.sampleRate} Hz; pitch is resampled by the browser\n`);
+  }
+  function routeAudio() {
+    if (!ac) return;
+    try { sp.disconnect(lineOut); } catch (e) {}
+    try { sp.disconnect(spkIn); } catch (e) {}
+    sp.connect($('outSel').value === 'spk' ? spkIn : lineOut);
+  }
+  function setMonitor() { if (master) master.gain.value = +$('mon').value; }
+  $('outSel').addEventListener('change', routeAudio);
+  $('mon').addEventListener('input', setMonitor);
+
+  // scope + status
+  const scope = $('scope'), sctx = scope.getContext('2d');
+  const sbuf = new Float32Array(2048);
+  function drawScope() {
+    sctx.fillStyle = '#141414'; sctx.fillRect(0, 0, scope.width, scope.height);
+    sctx.strokeStyle = '#2a2a28'; sctx.beginPath(); sctx.moveTo(0, 35); sctx.lineTo(scope.width, 35); sctx.stroke();
+    if (!analyser) return;
+    analyser.getFloatTimeDomainData(sbuf);
+    let s = 0; while (s < 1000 && !(sbuf[s] <= 0 && sbuf[s + 1] > 0)) s++;   // trigger on rising zero crossing
+    sctx.strokeStyle = '#f2f0eb'; sctx.lineWidth = 1.5; sctx.beginPath();
+    for (let x = 0; x < scope.width; x++) {
+      const v = sbuf[s + Math.floor(x * 1.6)] || 0;
+      const y = 35 - v * 60;
+      x ? sctx.lineTo(x, y) : sctx.moveTo(x, y);
+    }
+    sctx.stroke();
+  }
+  function drawStatus() {
+    if (!core || !hw.power) { $('toneStat').textContent = hw.power ? 'booting' : 'power off'; return; }
+    if (fw() === 0) {
+      $('toneStat').textContent = core.UTF8ToString(core._hb_status()) + (ac ? '' : ' · audio not started');
+      const ms0 = (performance.now() - bootT0) >>> 0;
+      $('led').classList.toggle('on', !((ms0 / 500) & 1));
+      return;
+    }
+    const hz = core._hb_tone_hz(), g = core._hb_tone_gain();
+    if (hz > 0) {
+      const b = padBits(), n = 31 - Math.clz32(b & -b);
+      const what = hz === 1000 ? '1 kHz reference (shift)' : `pad ${n} = ${noteName(n)}`;
+      $('toneStat').textContent = `${what} · ${hz.toFixed(2)} Hz · gain ${g.toFixed(3)}` + (ac ? '' : ' · audio not started');
+    } else {
+      $('toneStat').textContent = `silent · gain ${g.toFixed(3)} (pot 0)`;
+    }
+    const ms = (performance.now() - bootT0) >>> 0;
+    $('led').classList.toggle('on', !((ms / 500) & 1));   // digitalWrite(LED, (now/500)&1), LED active low
+  }
+  function drawAudioStat() {
+    $('audioStat').textContent = ac
+      ? `audio ${ac.state} · ${ac.sampleRate} Hz · ${audioBlocks} blocks rendered`
+      : 'audio not started - click Power on';
+  }
+  // plain WebAudio beep straight to the speakers: tells "browser/output problem" apart from "emulator problem"
+  $('beep').addEventListener('click', () => {
+    startAudio(); ac.resume();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = 660; g.gain.setValueAtTime(0.25, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.5);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.5);
+  });
+  // output device picker: browsers play to the Windows default device unless told otherwise
+  const sinkSel = $('sink');
+  async function listSinks() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    const outs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'default');
+    let saved = ''; try { saved = localStorage.getItem('hugbox-sink-label') || ''; } catch (e) {}
+    const cur = sinkSel.value;
+    sinkSel.innerHTML = '<option value="">System default</option>' + outs.map((d, i) =>
+      `<option value="${d.deviceId}">${(d.label || 'Output ' + (i + 1)).replace(/</g, '&lt;')}</option>`).join('');
+    const match = outs.find((d) => d.deviceId === cur) || outs.find((d) => d.label && d.label === saved);
+    if (match) { sinkSel.value = match.deviceId; applySink(); }
+  }
+  async function applySink() {
+    if (!ac || !ac.setSinkId) return;
+    try {
+      await ac.setSinkId(sinkSel.value);
+      const opt = sinkSel.selectedOptions[0];
+      try { localStorage.setItem('hugbox-sink-label', sinkSel.value ? opt.textContent : ''); } catch (e) {}
+      log(`[emulator] audio output -> ${opt.textContent}\n`);
+    } catch (e) { log(`[emulator] could not switch output: ${e.message}\n`); }
+  }
+  sinkSel.addEventListener('change', () => { startAudio(); applySink(); });
+  $('sinkNames').addEventListener('click', async () => {
+    try {
+      const st = await navigator.mediaDevices.getUserMedia({ audio: true });   // only to unlock device names
+      st.getTracks().forEach((t) => t.stop());
+    } catch (e) { log('[emulator] device names need microphone permission (nothing is recorded)\n'); }
+    listSinks();
+  });
+  listSinks();
+  // browsers can suspend audio until a gesture; resume on any interaction
+  const wake = () => { if (ac && ac.state !== 'running') ac.resume(); };
+  window.addEventListener('pointerdown', wake, true);
+  window.addEventListener('keydown', wake, true);
+  function frame() {
+    drawAudioStat();
+    drawOled(); drawScope(); drawStatus(); updatePadNotes(); updateGuide();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------------- board controls ----------------
+  function setBat() { hw.vbat = +$('bat').value; $('batV').textContent = hw.vbat.toFixed(2) + ' V'; }
+  $('bat').addEventListener('input', setBat);
+  $('reboot').addEventListener('click', () => { if (hw.power) boot(); });
+  $('noOled').addEventListener('change', () => { if (hw.power) boot(); });
+  $('noPcf').addEventListener('change', () => { if (hw.power) boot(); });
+  function setPower(on) {
+    hw.power = on;
+    pwrKnob.setAttribute('x', L.PWR[0] - 0.75 + (on ? 1.2 : -1.2));
+    pwrLabel.textContent = on ? 'POWER  ON' : 'POWER  OFF';
+    if (on) { boot(); } else { core = null; clearOled(); log('\n[power off]\n'); }
+  }
+
+  $('fwSel').addEventListener('change', () => { setLegends(); if (hw.power) boot(); });
+  setLegends();
+
+  // ---------------- start ----------------
+  clearOled(); paintKeys(); paintKnobs(); setBat();
+  pwrKnob.setAttribute('x', L.PWR[0] - 0.75 + 1.2); pwrLabel.textContent = 'POWER  ON';
+  boot();
+  requestAnimationFrame(frame);
+  const start = () => { startAudio(); if (ac.state === 'suspended') ac.resume(); $('start').style.display = 'none'; };
+  $('startBtn').addEventListener('click', start);
+  $('start').addEventListener('click', (e) => { if (e.target === $('start')) start(); });
+  window.hugboxEmu = { hw, get core() { return core; }, get ac() { return ac; }, get audioBlocks() { return audioBlocks; }, startAudio: start };   // for debugging from the console
+})();

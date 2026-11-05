@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XO-Hugbox Emulator</title>
+<style>
+  /* XOXO Audio Labs look (tokens from the xoxoaudiolabs website): black, off-white, grey rules, signal red used sparingly,
+     Anton display type, IBM Plex Mono for everything else, faint film grain. The device keeps its real colours. */
+  :root {
+    --black: #0b0b0b; --white: #f2f0eb; --grey: #8a8780; --rule: #2a2a28; --signal: #ff3b1f;
+    --well: #141414;
+    --display: 'Anton', 'Impact', 'Arial Narrow', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    /* names the rest of the page already uses */
+    --bg: var(--black); --panel: var(--black); --line: var(--rule); --text: var(--white); --dim: var(--grey); --accent: var(--white);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--black); color: var(--white);
+    font: 13px/1.6 var(--mono); -webkit-font-smoothing: antialiased; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: var(--grain); opacity: .07; pointer-events: none; z-index: 100; }
+  ::selection { background: var(--white); color: var(--black); }
+  .app { display: grid; grid-template-columns: auto minmax(320px, 540px); gap: 28px; padding: 20px; height: 100%;
+    justify-content: center; }
+  @media (max-width: 860px) { .app { grid-template-columns: 1fr; height: auto; padding: 16px; } }
+  .device-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 0; }
+  #device { height: calc(100vh - 76px); max-height: 900px; min-height: 480px; width: auto; touch-action: none;
+    user-select: none; filter: drop-shadow(0 14px 30px rgba(0,0,0,.7)); }
+  @media (max-width: 860px) { #device { height: auto; width: 100%; max-width: 420px; min-height: 0; } }
+  .hint { color: var(--grey); font-size: 11px; text-align: center; text-transform: uppercase; letter-spacing: .12em; }
+  .side { display: flex; flex-direction: column; gap: 0; min-height: 0; overflow: auto; }
+  /* tiles: 1px rules that collapse into each other, square corners */
+  .card { background: var(--black); border: 1px solid var(--rule); margin: 0 0 -1px; padding: 16px 18px 18px; }
+  .card h2 { font-family: var(--display); font-weight: 400; font-size: 1.45rem; line-height: 1; text-transform: uppercase;
+    letter-spacing: .01em; color: var(--white); margin: 0 0 12px; }
+  .masthead { border: 0; border-bottom: 2px solid var(--white); padding: 4px 0 16px; margin-bottom: 16px; }
+  .masthead .kicker { font-size: .72rem; font-weight: 500; text-transform: uppercase; letter-spacing: .14em; color: var(--grey); }
+  h1 { font-family: var(--display); font-weight: 400; text-transform: uppercase; font-size: clamp(2.8rem, 6vw, 4.4rem);
+    line-height: .92; margin: 6px 0 10px; letter-spacing: .005em; }
+  .status { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--signal); }
+  .sub { color: var(--grey); font-size: 12px; margin-top: 8px; }
+  code { background: #1c1c1b; padding: .05em .35em; font-family: var(--mono); }
+  #serial, #midiLog { font: 11.5px/1.4 var(--mono); background: var(--well); color: var(--white); border: 1px solid var(--rule);
+    padding: 10px; overflow: auto; white-space: pre; margin: 0; }
+  #serial { height: 220px; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+  .row label { color: var(--grey); min-width: 100px; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; }
+  .stat { font: 12px var(--mono); }
+  input[type=range] { flex: 1; accent-color: var(--white); }
+  input[type=checkbox] { accent-color: var(--white); }
+  button, select { font: 600 .72rem var(--mono); text-transform: uppercase; letter-spacing: .1em; background: transparent;
+    color: var(--white); border: 2px solid var(--white); border-radius: 0; padding: .55em 1em; cursor: pointer; }
+  select { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12px; border-width: 1px; border-color: var(--rule); padding: .45em .6em; }
+  select option { background: var(--black); }
+  button:hover { background: var(--white); color: var(--black); }
+  .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; font: 11px var(--mono); margin-top: 8px; }
+  .keys span { border: 1px solid var(--rule); margin: 0 -1px -1px 0; text-align: center; padding: 4px 0; }
+  .keys span b { color: var(--white); }
+  #oledZoom { width: 100%; max-width: 512px; aspect-ratio: 2 / 1; display: block; image-rendering: pixelated; background: #06080c;
+    border: 1px solid var(--rule); }
+  #scope { width: 100%; height: 70px; background: var(--well); border: 1px solid var(--rule); display: block; }
+  .led { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #333; vertical-align: middle; }
+  .led.on { background: #ffb347; box-shadow: 0 0 8px #ffb347; }
+  .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; gap: 18px; align-items: center; justify-content: center;
+    background: rgba(11,11,11,.86); z-index: 50; }
+  .overlay::before { content: 'XO'; font-family: var(--display); font-size: clamp(6rem, 18vw, 12rem); line-height: .9; color: transparent;
+    -webkit-text-stroke: 1.5px #4a4a47; letter-spacing: -.02em; }
+  .overlay button { font-size: .85rem; padding: .9em 1.6em; background: var(--white); color: var(--black); border: 2px solid var(--white); }
+  .overlay button:hover { background: var(--black); color: var(--white); }
+  .note { color: var(--grey); font-size: 12px; }
+  a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { color: var(--signal); }
+  /* UI guide */
+  .guide details { border-top: 1px solid var(--rule); padding: 10px 0; }
+  .guide details:first-of-type { border-top: 0; }
+  .guide summary { cursor: pointer; font: 400 1.15rem var(--display); text-transform: uppercase; letter-spacing: .01em;
+    list-style: none; display: flex; align-items: center; gap: 10px; }
+  .guide summary::-webkit-details-marker { display: none; }
+  .guide summary::before { content: "+"; font-family: var(--mono); font-weight: 600; color: var(--grey); width: 12px; display: inline-block; }
+  .guide details[open] > summary::before { content: "\2212"; }
+  .guide summary:hover { color: var(--signal); }
+  .guide .here { font: 600 10.5px var(--mono); letter-spacing: .1em; color: var(--signal); border: 1px solid var(--signal);
+    padding: 0 6px; text-transform: uppercase; }
+  .guide ol, .guide ul { margin: 6px 0 4px; padding-left: 22px; }
+  .guide ul li::marker { content: '\2014  '; color: var(--grey); }
+  .guide li { margin: 4px 0; }
+  .guide h3 { font: 600 .74rem var(--mono); text-transform: uppercase; letter-spacing: .12em; margin: 14px 0 2px; color: var(--white); }
+  .guide p { margin: 6px 0; }
+  kbd { font: 600 10.5px var(--mono); border: 1px solid var(--grey); padding: 0 5px; background: transparent; white-space: nowrap; }
+  .lbl { font: 600 11.5px var(--mono); color: var(--white); background: #1c1c1b; padding: 0 .3em; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 8px 0; font: 11px var(--mono); }
+  .grid4 span { border: 1px solid var(--rule); margin: 0 -1px -1px 0; padding: 6px 2px; text-align: center; text-transform: uppercase; letter-spacing: .06em; }
+  .grid4 span b { color: var(--grey); display: block; font-size: 10px; }
+  .knobmap { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .knobmap td { padding: 5px 4px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  .knobmap td:first-child { color: var(--grey); white-space: nowrap; width: 1%; text-transform: uppercase; letter-spacing: .06em; font-size: 10.5px; padding-top: 7px; }
+  .knobmap .v { text-align: right; white-space: nowrap; font-weight: 600; }
+  .knobmap tr.shiftrow td:first-child { color: var(--signal); }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="overlay" id="start"><button id="startBtn">Power on</button></div>
+<div class="app">
+  <div class="device-wrap">
+    <svg id="device" xmlns="http://www.w3.org/2000/svg" aria-label="XO-Hugbox top view"></svg>
+    <div class="hint">Click/hold pads or use the keyboard · Shift = shift key · drag or scroll a knob · click the power slider</div>
+  </div>
+  <div class="side">
+    <div class="card masthead">
+      <div class="kicker">XOXO Audio Labs · Emulator</div>
+      <h1>XO-Hugbox</h1>
+      <span class="status">Prototype</span>
+      <div class="row"><label for="fwSel">Firmware</label><select id="fwSel" style="flex:1;min-width:0">
+        <option value="0">Main UI · views, sequencer, chord + arp, MIDI</option>
+        <option value="1">Hardware bring-up test</option></select></div>
+      <div class="sub">The device's own C++ (<code>firmware/lib/hugbox_core</code>) compiled to WebAssembly with the real U8g2 SH1106 driver:
+        6-voice synth, 16-pad sampler, sequencer, FX, projects and MIDI, exactly as the board runs them.</div>
+    </div>
+    <div class="card">
+      <h2>OLED · 128×64 SH1106, as the player sees it</h2>
+      <canvas id="oledZoom" width="512" height="256"></canvas>
+    </div>
+    <div class="card guide" id="guide">
+      <h2>Hugbox guide</h2>
+      <p class="note">Knobs are numbered 1-4 from the left. Pads are named by their keyboard key: the top row is
+        <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd>, then <kbd>Q</kbd>-<kbd>R</kbd>, <kbd>A</kbd>-<kbd>F</kbd>,
+        <kbd>Z</kbd>-<kbd>V</kbd>. <kbd>Shift</kbd> is the orange key (or your Shift key).</p>
+
+      <details open>
+        <summary>Knobs right now <span class="here" id="gViewTag"></span></summary>
+        <table class="knobmap" id="gKnobs"><tr><td colspan="3" class="note">Power on to see the live knob map.</td></tr></table>
+        <p class="note">Updates as you move around. Red rows need <kbd>Shift</kbd> held while turning.</p>
+      </details>
+
+      <details open>
+        <summary>How do I…?</summary>
+        <h3>Turn on chord mode</h3>
+        <ol>
+          <li><kbd>Shift</kbd> + <kbd>S</kbd> (SYN) picks the synth track and its PLAY screen.</li>
+          <li>Hold <kbd>Shift</kbd> and turn <b>knob 3</b> (<span class="lbl">CHRD</span>): 5TH, TRIAD, 7TH, SUS2 or SUS4.</li>
+          <li>Play pads: each one now plays a chord built from the current scale. Sequencer steps play chords too.</li>
+          <li>Inversions: <kbd>Shift</kbd> + <kbd>3</kbd> (SND) until the title reads <b>CHORD/ARP</b>, then knob 2 (<span class="lbl">INV</span>).</li>
+        </ol>
+        <h3>Turn on the arpeggiator</h3>
+        <ol>
+          <li>On the synth PLAY screen, hold <kbd>Shift</kbd> and turn <b>knob 4</b> (<span class="lbl">ARP</span>): UP, DOWN, UP/DN, RAND or ORDER.</li>
+          <li>Hold one or more pads; the arp plays their notes (with chord mode on, it plays the chord's notes).</li>
+          <li>Speed, octaves, gate and latch are on SOUND page <b>CHORD/ARP</b>: <kbd>Shift</kbd> + <kbd>3</kbd> until you see it.
+            <span class="lbl">RATE</span> 1/4…1/32 incl. triplets, <span class="lbl">OCTS</span> 1-3, <span class="lbl">AGAT</span> note length,
+            <span class="lbl">LTCH</span> ON keeps it running after you let go.</li>
+        </ol>
+        <h3>Make a drum beat</h3>
+        <ol>
+          <li><kbd>Shift</kbd> + <kbd>A</kbd> (DRUM), then <kbd>Shift</kbd> + <kbd>2</kbd> (SEQ).</li>
+          <li>Knob 1 (<span class="lbl">PAD</span>) chooses which drum you're writing for: KCK, SNR, CHH…</li>
+          <li>Tap pads to switch steps on/off (top-left = step 1, reading like text).</li>
+          <li><kbd>Shift</kbd> + <kbd>D</kbd> (RUN) starts and stops it. Pick another drum with knob 1 and add its steps.</li>
+        </ol>
+        <h3>Record by playing</h3>
+        <ol>
+          <li><kbd>Shift</kbd> + <kbd>F</kbd> (REC) arms recording (red dot on the top line), <kbd>Shift</kbd> + <kbd>D</kbd> (RUN) starts.</li>
+          <li>Go to PLAY (<kbd>Shift</kbd> + <kbd>1</kbd>) and play pads: each hit is written to the nearest step.</li>
+        </ol>
+        <h3>Tweak a single step</h3>
+        <ol><li>In SEQ, <b>hold</b> a step pad and turn a knob: 1 <span class="lbl">VEL</span>, 2 <span class="lbl">NOTE</span>,
+          3 <span class="lbl">GATE</span> (length), 4 <span class="lbl">PROB</span> (chance it plays).</li></ol>
+        <h3>Change tempo, swing or pattern length</h3>
+        <ul><li>In SEQ: knob 2 <span class="lbl">BPM</span>, knob 3 <span class="lbl">SWNG</span>, knob 4 <span class="lbl">LEN</span> (16, 32, 48 or 64 steps).
+          Pages 1-4: <kbd>Shift</kbd> + <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd>.</li></ul>
+        <h3>Change scale, key or octave</h3>
+        <ul><li>Synth PLAY screen, hold <kbd>Shift</kbd>: knob 1 <span class="lbl">OCT</span>, knob 2 <span class="lbl">SCAL</span>
+          (CHROM, MAJOR, MINOR, PENTA, DORIAN). Root note: CHORD/ARP page, <kbd>Shift</kbd> + knob 4 <span class="lbl">ROOT</span>.</li></ul>
+        <h3>Shape the synth sound</h3>
+        <ul><li><kbd>Shift</kbd> + <kbd>3</kbd> (SND) cycles <b>OSC</b> (waves, detune, mix, FM, drift, glide) →
+          <b>FILTER</b> (cutoff, resonance, envelope, volume, ADSR) → <b>CHORD/ARP</b>.</li></ul>
+        <h3>Change a drum sound</h3>
+        <ul><li>On the drum track, tap the pad, then <kbd>Shift</kbd> + <kbd>3</kbd> (SND): <span class="lbl">PTCH DCY CUT LVL</span>,
+          with Shift <span class="lbl">SMPL PAN CHOK KIT</span>.</li></ul>
+        <h3>Add delay, drive or lo-fi</h3>
+        <ul><li><kbd>Shift</kbd> + <kbd>4</kbd> (FX): knob 3 <span class="lbl">DLY</span> (amount), 1 <span class="lbl">TIME</span>
+          (1/32…1/2, synced), 2 <span class="lbl">FDBK</span>, 4 <span class="lbl">DRV</span>; with Shift
+          <span class="lbl">CRSH</span> (bits), <span class="lbl">LOFI</span>, <span class="lbl">LCUT</span> (low cut), <span class="lbl">MVOL</span>.</li></ul>
+        <h3>Save or load a project</h3>
+        <ol>
+          <li><kbd>Shift</kbd> + <kbd>V</kbd> (SET). The top two pad rows are slots <b>S1-S8</b> (filled = has a project).</li>
+          <li><b>Hold</b> a slot pad until the bar fills to save into it; <b>tap</b> a slot to load it.</li>
+          <li>You never lose work by switching off: everything autosaves a few seconds after each change.</li>
+        </ol>
+        <h3>Copy a page, clear, mute, tap tempo</h3>
+        <ul>
+          <li>On the SETTINGS pads: <b>CPY</b> copies the current sequencer page of the current track, <b>PST</b> pastes it onto
+            the page you're on (pick pages with <kbd>Shift</kbd> + <kbd>Q</kbd>-<kbd>R</kbd>), <b>CLR</b> clears the page,
+            <b>CLT</b> (hold) clears the whole track.</li>
+          <li><b>MDR</b> / <b>MSY</b> mute the drum / synth sequence (live pads still play).</li>
+          <li><b>TAP</b> 3-4 times in time sets the tempo. <b>PNC</b> stops every stuck note (MIDI panic).</li>
+        </ul>
+        <h3>Play other gear over MIDI</h3>
+        <ol>
+          <li><kbd>Shift</kbd> + <kbd>C</kbd> (LAYERED) plays the Hugbox and sends MIDI; <kbd>Shift</kbd> + <kbd>X</kbd> (CONTROLLER) sends MIDI only.</li>
+          <li>Synth notes go out on <span class="lbl">MCH</span>, drums on <span class="lbl">DCH</span> (10): SETTINGS knobs 1-2.
+            The sequencer, arp and clock go out too.</li>
+          <li>In Controller mode the knobs send CC 70-73 (Shift: 74-77) instead of changing sounds.</li>
+          <li>Over Bluetooth: <span class="lbl">BLE</span> ON (SETTINGS knob 4), then pair "XO-Hugbox" in your app.</li>
+        </ol>
+        <h3>Sync to a DAW or another box</h3>
+        <ul><li>SETTINGS knob 3 <span class="lbl">SYNC</span>: <b>INT</b> = Hugbox is the clock; <b>USB</b> / <b>BLE</b> = follow
+          incoming clock and start/stop (tempo shows on the screen; RUN is then controlled from outside).</li></ul>
+        <h3>Get back to where I was</h3>
+        <ul><li>Double-tap <kbd>Shift</kbd> to see every shortcut on the screen, then tap the pad you want.</li></ul>
+      </details>
+
+      <details>
+        <summary>Shortcut map (Shift + pad)</summary>
+        <div class="grid4">
+          <span><b>1</b>PLAY</span><span><b>2</b>SEQ</span><span><b>3</b>SOUND</span><span><b>4</b>FX</span>
+          <span><b>Q</b>PAGE 1</span><span><b>W</b>PAGE 2</span><span><b>E</b>PAGE 3</span><span><b>R</b>PAGE 4</span>
+          <span><b>A</b>DRUM</span><span><b>S</b>SYNTH</span><span><b>D</b>RUN/STOP</span><span><b>F</b>REC</span>
+          <span><b>Z</b>STANDALONE</span><span><b>X</b>CONTROLLER</span><span><b>C</b>LAYERED</span><span><b>V</b>SETTINGS</span>
+        </div>
+        <ul>
+          <li><b>Hold Shift</b>: the knobs switch to their second four (the bottom line of the screen turns inverted). The screen stays put.</li>
+          <li><b>Double-tap Shift</b>: this map appears on the OLED; tap any pad to run its shortcut. Shift, a knob or 5 s closes it.</li>
+          <li>SOUND pressed again cycles the synth pages. Choosing DRUM/SYNTH from FX or SETTINGS jumps to that track's PLAY screen.</li>
+        </ul>
+      </details>
+
+      <details>
+        <summary>Reading the screen</summary>
+        <ul>
+          <li><b>Top line:</b> mode box (<span class="lbl">STD</span>/<span class="lbl">CTL</span>/<span class="lbl">LAY</span>) · track · tempo ·
+            sequencer page shown (<span class="lbl">P1</span>) · ▶ running / ■ stopped · ● record armed (blinks while recording) ·
+            <span class="lbl">BT</span> Bluetooth on · battery.</li>
+          <li><b>Bottom line:</b> what knobs 1-4 do; inverted while Shift is held. The small bar under each shows its value.</li>
+          <li><b>Turning a knob</b> pops up its full name and value. <span class="lbl">&lt; TURN</span> / <span class="lbl">TURN &gt;</span>
+            means the knob hasn't reached the stored value yet: turn it that way until it catches (so values never jump).</li>
+          <li><b>Pad grid:</b> PLAY shows drum names or note names (root notes underlined, last-hit drum underlined).
+            SEQ shows steps: filled = on, small block = playhead, dot = beyond the pattern length.</li>
+        </ul>
+      </details>
+
+      <details>
+        <summary>The views</summary>
+        <ul>
+          <li><b>PLAY</b>: drums: 16 sounds, bottom-left is the kick. Synth: notes of the scale, bottom-left is the root, rising left→right, bottom→top.</li>
+          <li><b>SEQ</b>: 16 steps per page, 4 pages. Drum steps belong to the drum chosen with knob 1; synth steps play scale notes.</li>
+          <li><b>SOUND</b>: drum: the selected pad's sound. Synth: OSC, FILTER and CHORD/ARP pages.</li>
+          <li><b>FX</b>: master delay, drive, bitcrush, lo-fi, low cut and volume.</li>
+          <li><b>SETTINGS</b>: pads = projects (S1-S8), page copy/paste/clear, track mutes, tap tempo, panic.
+            Knobs: synth MIDI channel, drum MIDI channel, clock source, Bluetooth; Shift: screen brightness.</li>
+        </ul>
+      </details>
+    </div>
+    <div class="card">
+      <h2>Audio</h2>
+      <div class="row"><span class="stat" id="toneStat">silent</span></div>
+      <div class="row"><span class="stat" id="audioStat">audio not started</span><button id="beep">Test beep</button></div>
+      <div class="row"><label for="sink">Output device</label><select id="sink" style="flex:1;min-width:0"><option value="">System default</option></select>
+        <button id="sinkNames" title="Browsers hide device names until you allow microphone access once; nothing is recorded">Show names</button></div>
+      <canvas id="scope" width="480" height="70"></canvas>
+      <div class="row"><label for="outSel">Listen through</label>
+        <select id="outSel"><option value="line">Line out (PCM5102A jack)</option><option value="spk">Speaker (MAX98357A + 3 W box, approx.)</option></select></div>
+      <div class="row"><label for="mon">Monitor level</label><input id="mon" type="range" min="0" max="1" step="0.01" value="0.6"></div>
+      <div class="note">Monitor level only scales your computer's output; the device's own volume is a knob parameter (MVOL, or pot 0 in the bring-up test).</div>
+    </div>
+    <div class="card">
+      <h2>Board</h2>
+      <div class="row"><label for="bat">Battery</label><input id="bat" type="range" min="3.0" max="4.25" step="0.01" value="3.92"><span class="stat" id="batV">3.92 V</span></div>
+      <div class="row"><label>Fault sim</label>
+        <label style="min-width:0"><input type="checkbox" id="noOled"> OLED missing</label>
+        <label style="min-width:0"><input type="checkbox" id="noPcf"> PCF8574 missing</label></div>
+      <div class="row"><label>Screen</label>
+        <label style="min-width:0"><input type="checkbox" id="rawPanel"> show raw panel orientation (what U8G2_R2 writes)</label></div>
+      <div class="row"><label>XIAO LED</label><span class="led" id="led"></span><span class="note">heartbeat, 1 Hz (under the board on the real unit)</span></div>
+      <div class="row"><button id="reboot">Reset (EN)</button></div>
+    </div>
+    <div class="card">
+      <h2>MIDI · USB + Bluetooth</h2>
+      <div class="note">MIDI goes out in <b>Controller</b> and <b>Layered</b> modes: synth on the MCH channel, drums on DCH (10) with
+        General MIDI note numbers, clock + start/stop when running. In Controller mode the knobs send CC 70-73 (Shift: 74-77).
+        Incoming notes play the Hugbox; with SYNC set to USB it follows incoming clock.</div>
+      <div class="row"><button id="midiConnect">Connect real MIDI devices</button><span class="note" id="midiState">not connected (optional)</span></div>
+      <div class="row"><label for="midiOutSel">Send to</label><select id="midiOutSel" style="flex:1;min-width:0"><option value="">(monitor only)</option></select></div>
+      <div class="row"><label for="midiInSel">Receive from</label><select id="midiInSel" style="flex:1;min-width:0"><option value="">(none)</option></select></div>
+      <div class="row"><label>Test input</label><button id="midiTestNote">Note C4 ch 1</button><button id="midiTestDrum">Snare ch 10</button><span class="stat" id="midiClock"></span></div>
+      <pre id="midiLog" style="height:130px;margin-top:6px"></pre>
+    </div>
+    <div class="card">
+      <h2>Projects</h2>
+      <div class="note">Your work autosaves a few seconds after each change and comes back when you reload (stored in this browser,
+        like the board's flash). SETTINGS (<kbd>Shift</kbd> + <kbd>V</kbd>): tap S1-S8 to load, hold to save.</div>
+      <div class="row"><span class="stat" id="projState"></span><button id="projClear">Clear saved projects</button></div>
+    </div>
+    <div class="card">
+      <h2>Serial monitor · 115200</h2>
+      <pre id="serial"></pre>
+    </div>
+    <div class="card">
+      <h2>Keyboard</h2>
+      <div class="note" id="fwNote">Hold <b>Shift</b> for the second set of knob parameters (the screen stays put); Shift + pad runs the orange shortcut.
+        <b>Double-tap Shift</b> to show the shortcut map, then tap any pad to run it (Shift tap, a knob or 5 s closes it).
+        Knobs only take over a value once you turn them past it (the readout shows <i>TURN</i> until then).
+        In SEQ, tap a pad to toggle a step; hold a step and turn a knob to set its velocity / pitch / gate / probability.
+        Synth track: chords and the arpeggiator are on SOUND page 3 (Shift + SND until it shows CHORD/ARP), or on the PLAY view's shift knobs.</div>
+      <div class="note" id="bringNote">Pad n = C4 + n semitones (pad 0 = C4 top-left … pad 15 = D#5). Lowest held pad wins. Shift + pad = 1 kHz.</div>
+      <div class="keys" id="keymap"></div>
+      <div class="note" style="margin-top:8px">Not emulated yet: loading your own samples (see <code>sim/README.md</code>).</div>
+    </div>
+  </div>
+</div>
+<script src="layout.js"></script>
+<script src="hugbox_core.js"></script>
+<script src="emulator.js"></script>
+</body>
+</html>

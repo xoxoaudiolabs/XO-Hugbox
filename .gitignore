@@ -1,0 +1,25 @@
+# PlatformIO build output and downloaded libraries
+firmware/.pio/
+firmware/.vscode/
+
+# KiCad per-user state and caches
+*.kicad_prl
+fp-info-cache
+*-backups/
+*.bak
+
+# Python
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# board pipeline intermediates (build.py -> *_placed, import_ses.py -> *_routed, DRC reports)
+hardware/pcb/*_placed.kicad_pcb
+hardware/pcb/*_routed.kicad_pcb
+hardware/pcb/*.kicad_pro
+hardware/pcb/*.rpt
+hardware/pcb/*.tmp

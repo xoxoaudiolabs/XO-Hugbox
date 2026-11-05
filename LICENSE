@@ -1,0 +1,22 @@
+XO-Hugbox
+Copyright (c) 2026 XOXO Audio Labs LLC
+
+This repository uses three licenses, by kind of material. The full texts are in LICENSES/.
+
+  Hardware  -  CERN Open Hardware Licence v2, Strongly Reciprocal (CERN-OHL-S-2.0)
+               hardware/  (layout.py, the PCB and its scripts, gerbers, plate and shell models)
+               LICENSES/CERN-OHL-S-2.0.txt
+
+  Software  -  MIT License (MIT)
+               firmware/, sim/, and the code in docs/build-guide/ (src/*.js, src/index.html, tools/)
+               LICENSES/MIT.txt
+
+  Docs      -  Creative Commons Attribution-ShareAlike 4.0 International (CC-BY-SA-4.0)
+               README.md, docs/*.md, docs/images/, and the written build steps in docs/build-guide/src/steps.js
+               LICENSES/CC-BY-SA-4.0.txt
+
+Generated files (bundled HTML pages, compiled WebAssembly, STLs, gerbers) carry the license of the sources they are
+generated from. Third-party components keep their own licenses: see NOTICE.md.
+
+"XOXO Audio Labs", "XO-Hugbox" and the XO logo are names and marks of XOXO Audio Labs LLC; the licenses above do not grant
+rights to use them for derived products. If you make and share a modified version, please give it a different name.

@@ -1,0 +1,7 @@
+# Keep LF everywhere: the build scripts run in WSL/Linux, and KiCad/gerber files are compared byte-for-byte.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.stl binary
+*.zip binary
+*.xlsx binary
