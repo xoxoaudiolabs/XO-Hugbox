@@ -47,7 +47,9 @@
 
   el('rect', { x: 0, y: 0, width: L.W, height: L.H, rx: 3, fill: 'url(#plateG)', stroke: '#bdb7a8', 'stroke-width': 0.3 });
   // raised strip over the pots
-  el('rect', { x: L.cx[0] - 10.4, y: Y(L.POT_Y + 10.4), width: L.W - 3 - (L.cx[0] - 10.4), height: 20.8, rx: 2,
+  // (same as gen_scad.py: reaches toward the keys far enough to cover the pots' straight solder lugs)
+  const stripFront = L.POT_CAN_D / 2 + L.POT_LUG_L + 2.6;
+  el('rect', { x: L.cx[0] - 10.4, y: Y(L.POT_Y + 10.4), width: L.W - 3 - (L.cx[0] - 10.4), height: 10.4 + stripFront, rx: 2,
     fill: '#ece7da', stroke: '#c9c2b2', 'stroke-width': 0.25 });
 
   // screws (countersunk M3); SUPPORT_ONLY holes are hidden support posts under a solid plate
@@ -64,7 +66,7 @@
 
   // OLED: window in the plate, glass, then the 128x64 active area (29.42 x 14.7 mm on a 1.3" SH1106)
   const [ox, oy] = L.OLED_C;
-  el('rect', { x: ox - 15.25, y: Y(oy + L.OLED_WIN_OFF + 7.75), width: 30.5, height: 15.5, rx: 0.6, fill: '#050608' });
+  el('rect', { x: ox - L.OLED_WIN[0] / 2, y: Y(oy + L.OLED_WIN_OFF + L.OLED_WIN[1] / 2), width: L.OLED_WIN[0], height: L.OLED_WIN[1], rx: 0.6, fill: '#050608' });
   const AW = 29.42, AH = 14.7;
   const fo = el('foreignObject', { x: ox - AW / 2, y: Y(oy + L.OLED_WIN_OFF + AH / 2), width: AW, height: AH });
   const oledCanvas = document.createElement('canvas');
@@ -89,9 +91,10 @@
     const g = el('g', { style: 'cursor:ns-resize' });
     const x = L.cx[i], y = Y(L.POT_Y);
     el('circle', { cx: x, cy: y, r: 5.5, fill: '#9a9a9a' }, g);           // nut
-    el('circle', { cx: x, cy: y, r: 7.17, fill: 'url(#knobG)', stroke: '#111', 'stroke-width': 0.3 }, g);
-    el('circle', { cx: x, cy: y, r: 6, fill: '#bbbbbb', opacity: 0.18 }, g);
-    const ind = el('line', { x1: x, y1: y - 1.5, x2: x, y2: y - 6, stroke: '#f4f4f4', 'stroke-width': 0.9, 'stroke-linecap': 'round' }, g);
+    // 15 x 17 mm black aluminium knob, seen from above: bright chamfer ring, black face, bright pointer line
+    el('circle', { cx: x, cy: y, r: 7.5, fill: '#cfcfcf', stroke: '#111', 'stroke-width': 0.3 }, g);
+    el('circle', { cx: x, cy: y, r: 6.9, fill: 'url(#knobG)' }, g);
+    const ind = el('line', { x1: x, y1: y - 2.2, x2: x, y2: y - 6.9, stroke: '#dcdcdc', 'stroke-width': 0.5 }, g);
     const t = el('title', {}, g);
     // scale ticks
     for (let a = -150; a <= 150; a += 30) {

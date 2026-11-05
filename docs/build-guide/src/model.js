@@ -350,19 +350,21 @@ function buildModel(STEP) {
     }
   }
 
-  // ---- pots (WH148 B10K, pins toward the keys, in oval slots)
+  // ---- pots (WH148 B10K, straight lugs toward the keys, wire legs down into the oval slots)
   {
     const p = part('pots', { name: 'WH148 B10K 16 mm pots', qty: 4, step: STEP.underplate, explode: 50, refs: ['RV1', 'RV2', 'RV3', 'RV4'],
-      info: 'Pins face the keys and drop into the plated oval slots (GND, wiper, 3V3 left to right), so the exact pin offset does not matter. The body sits under the plate; the shaft comes up through it.' });
+      info: 'Straight-lug WH148s: the solder lugs leave the can about 5.3 mm above the board, pointing at the keys. A short wire leg (diode lead offcut) runs from each lug straight down into the plated oval slot under it (GND, wiper, 3V3 left to right). The nut on the plate holds the pot, so the legs carry no load.' });
+    const R = L.POT_CAN_D / 2, MET = { metalness: 0.7, roughness: 0.35 };
     for (let i = 0; i < 4; i++) {
       const x = L.cx[i], y = L.POT_Y;
-      p.box(12, 13, 1.4, '#b0a070', x, y - 6.5, Z.pcbTop);
-      p.cylZ(8.4, L.POT_BODY_H, '#c8c8c8', x, y, Z.pcbTop, 40, { metalness: 0.7, roughness: 0.35 });
-      p.cylZ(3.5, 6.5, '#d0d0d0', x, y, Z.pcbTop + L.POT_BODY_H, 24, { metalness: 0.8, roughness: 0.3 });
-      p.cylZ(3.0, 8.5, '#e3e3e3', x, y, Z.pcbTop + L.POT_BODY_H + 6.5, 24, { metalness: 0.6, roughness: 0.4 });
+      p.cylZ(R, L.POT_BODY_H, '#c8c8c8', x, y, Z.pcbTop, 48, MET);
+      p.cylZ(6.65 / 2, 7.33, '#d0d0d0', x, y, Z.pcbTop + L.POT_BODY_H, 24, { metalness: 0.8, roughness: 0.3 });   // M7 collar
+      p.cylZ(5.95 / 2, 8.26, '#e3e3e3', x, y, Z.pcbTop + L.POT_BODY_H + 7.33, 24, { metalness: 0.6, roughness: 0.4 });
+      const lz = Z.pcbTop + L.POT_LUG_Z, legY = y - (R + L.POT_LUG_L - 1.2);
+      p.box(13, 2.2, L.POT_LUG_T, '#b8b8b8', x, y - R - 0.6, lz, MET);                                            // frame tab
       for (let k = -1; k <= 1; k++) {
-        const smid = L.POT_Y + (L.POT_SLOT[0] + L.POT_SLOT[1]) / 2;
-        p.box(1.0, 0.4, 4.2, SILVER, x + k * L.POT_PITCH, smid, Z.pcb - 1.2, { metalness: 0.8 });
+        p.box(2.0, L.POT_LUG_L, L.POT_LUG_T, '#d8c27a', x + k * L.POT_PITCH, y - R - L.POT_LUG_L / 2, lz, { metalness: 0.8, roughness: 0.3 });
+        p.cylZ(0.3, lz - (Z.pcb - 1.2), SILVER, x + k * L.POT_PITCH, legY, Z.pcb - 1.2, 8, { metalness: 0.8, roughness: 0.3 });
       }
     }
   }
@@ -373,8 +375,8 @@ function buildModel(STEP) {
     const p = part('oled', { name: '1.3" SH1106 I2C OLED', step: STEP.underplate, explode: 50, refs: ['U5'],
       info: 'Header plastic removed, module soldered 0.8 mm above the board. Header toward the pots, so the module is upside down - the firmware uses U8G2_R2 to turn the picture back. Board order SDA SCL VCC GND left to right.' });
     const [ox, oy] = L.OLED_C;
-    p.box(36, 34, 1.2, '#1e5bd6', ox, oy, Z.pcbTop + 0.8);
-    p.box(35.5, 21, 1.6, '#050505', ox, oy + L.OLED_GLASS_OFF, Z.pcbTop + 2.0, { roughness: 0.15, metalness: 0.2 });
+    p.box(L.OLED_MOD[0], L.OLED_MOD[1], 1.2, '#1e5bd6', ox, L.OLED_MOD_Y0 + L.OLED_MOD[1] / 2, Z.pcbTop + 0.8);
+    p.box(L.OLED_GLASS[0], L.OLED_GLASS[1], 1.6, '#050505', ox, oy + L.OLED_GLASS_OFF, Z.pcbTop + 2.0, { roughness: 0.15, metalness: 0.2 });
     screenMat = new THREE.MeshBasicMaterial({ map: oledTexture(), toneMapped: false });
     const scr = p.add(new THREE.PlaneGeometry(29.42, 14.7), screenMat, ox, oy + L.OLED_WIN_OFF, Z.pcbTop + 3.62);
     scr.rotation.z = 0;
@@ -471,15 +473,33 @@ function buildModel(STEP) {
     [...keyXY, L.SHIFT].forEach(([x, y], i) => p.add(g, i === 16 ? '#e8792b' : '#ece9e1', x, y, Z.plateTop + 6.6 + 3.7, { roughness: 0.7 }));
   }
   {
-    const p = part('knobs', { name: '14 mm knobs + pot nuts', qty: 4, step: STEP.caps, explode: 100,
-      info: 'Nut and washer clamp the pot to the raised strip, then push on the 14 mm knobs.' });
+    // 15 x 17 mm black anodised aluminium knob (set screw, 6 mm bore): knurled grip band at the base,
+    // smooth upper body, black top face with a bright diamond-cut chamfer and pointer line.
+    const p = part('knobs', { name: '15×17 mm aluminium knobs + pot nuts', qty: 4, step: STEP.caps, explode: 100,
+      info: 'Nut and washer clamp the pot to the raised strip, then fit the 15×17 mm knobs and tighten the set screws.' });
+    const KR = 7.5, KH = 17, KNURL_H = 13, CHAMF = 0.6;
+    const BLACK = { metalness: 0.55, roughness: 0.38 }, BRIGHT = { metalness: 0.95, roughness: 0.2 };
+    const knurl = new THREE.CylinderGeometry(KR, KR, KNURL_H, 160, 1);
+    {
+      const pos = knurl.attributes.position;
+      for (let v = 0; v < pos.count; v++) {
+        const x = pos.getX(v), z = pos.getZ(v), r = Math.hypot(x, z);
+        if (r < KR * 0.9) continue;                          // cap centre vertices
+        const k = 1 - 0.035 * (0.5 + 0.5 * Math.cos(80 * Math.atan2(z, x)));
+        pos.setX(v, x * k); pos.setZ(v, z * k);
+      }
+      knurl.computeVertexNormals(); knurl.rotateX(Math.PI / 2);
+    }
+    const chamfer = new THREE.CylinderGeometry(KR - CHAMF, KR, CHAMF, 64, 1, true); chamfer.rotateX(Math.PI / 2);
     for (let i = 0; i < 4; i++) {
-      const x = L.cx[i];
+      const x = L.cx[i], z0 = Z.strip + 2;
       const nut = new THREE.CylinderGeometry(5.5, 5.5, 2, 6); nut.rotateX(Math.PI / 2);
       p.add(nut, '#9a9a9a', x, L.POT_Y, Z.strip + 1, { metalness: 0.85, roughness: 0.3 });
-      p.cylZ(7.17, 16.8, '#2a2a2a', x, L.POT_Y, Z.strip + 2, 32);
-      p.cylZ(6, 0.3, '#bbbbbb', x, L.POT_Y, Z.strip + 18.8, 32, { metalness: 0.7 });
-      p.box(1, 4.5, 0.2, '#ffffff', x, L.POT_Y + 3.75, Z.strip + 19.1);
+      p.add(knurl, '#1a1a1a', x, L.POT_Y, z0 + KNURL_H / 2, BLACK);
+      p.cylZ(KR, KH - KNURL_H - CHAMF, '#161616', x, L.POT_Y, z0 + KNURL_H, 64, BLACK);
+      p.add(chamfer, '#d6d6d6', x, L.POT_Y, z0 + KH - CHAMF / 2, BRIGHT);
+      p.cylZ(KR - CHAMF, CHAMF, '#0c0c0c', x, L.POT_Y, z0 + KH - CHAMF, 64, { metalness: 0.3, roughness: 0.5 });
+      p.box(0.45, 4.6, 0.05, '#d6d6d6', x, L.POT_Y + (KR - CHAMF) - 2.3, z0 + KH, BRIGHT);
     }
   }
   return { screenMat };

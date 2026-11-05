@@ -31,17 +31,19 @@ translate([0,0,e1]){{
   color("#111") translate([{L.PCM_X1-7},{L.PCM_Y0+0.5},{zb-6}]) cube([7,11,6]);
   color("#111") translate([{L.PCM_X1-1},{L.JACK_Y},{zb-3}]) rotate([0,90,0]) cylinder(d=6,h=3.2);
   for(k={[list(p) for p in keys]}) color("#e9e2c8") translate([k[0]-3.8,k[1]-9.5,{zP-1.9}]) rotate([0,90,0]) cylinder(d=1.9,h=7.6,$fn=12);
-  color("#1e5bd6") translate([{L.OLED['x0']+0.2},{L.OLED['y0']+0.2},{zPt+0.8}]) cube([36,34,1.2]);
-  color("#050505") translate([{L.OLED_C[0]-17.75},{L.OLED_C[1]+L.OLED_GLASS_OFF-10.5},{zPt+2.0}]) cube([35.5,21,1.6]);
+  color("#1e5bd6") translate([{L.OLED_C[0]-L.OLED_MOD[0]/2:.2f},{L.OLED_MOD_Y0:.2f},{zPt+0.8}]) cube([{L.OLED_MOD[0]},{L.OLED_MOD[1]},1.2]);
+  color("#050505") translate([{L.OLED_C[0]-L.OLED_GLASS[0]/2:.2f},{L.OLED_GLASS_Y0:.2f},{zPt+2.0}]) cube([{L.OLED_GLASS[0]},{L.OLED_GLASS[1]},1.4]);
   color("#7fd7ff") translate([{L.OLED_C[0]-14},{L.OLED_C[1]+L.OLED_WIN_OFF-6.5},{zPt+3.61}]) cube([28,1.2,0.05]);
   color("#7fd7ff") translate([{L.OLED_C[0]-14},{L.OLED_C[1]+L.OLED_WIN_OFF+3},{zPt+3.61}]) cube([18,3,0.05]);
   for(i=[0:5]) color("#7fd7ff") translate([{L.OLED_C[0]-14}+i*4.8,{L.OLED_C[1]+L.OLED_WIN_OFF-4.5},{zPt+3.61}]) cube([3,1+i*1.2,0.05]);
   // pots - pin tab faces the keys
   for(i=[0:3]) translate([{L.BORDER}+{L.P}/2+i*{L.P},{L.POT_Y},0]){{
-    color("#b0a070") translate([-6,-13,{zPt}]) cube([12,13,1.4]);
-    color("#c8c8c8") translate([0,0,{zPt}]) cylinder(d=16.8,h={L.POT_BODY_H});
-    color("#d0d0d0") translate([0,0,{zPt+L.POT_BODY_H}]) cylinder(d=7,h=6.5);
-    color("#e0e0e0") translate([0,0,{zPt+L.POT_BODY_H+6.5}]) cylinder(d=6,h=8.5);
+    color("#c8c8c8") translate([0,0,{zPt}]) cylinder(d={L.POT_CAN_D},h={L.POT_BODY_H});
+    color("#d0d0d0") translate([0,0,{zPt+L.POT_BODY_H}]) cylinder(d=6.65,h=7.33);
+    color("#e0e0e0") translate([0,0,{zPt+L.POT_BODY_H+7.33}]) cylinder(d=5.95,h=8.26);
+    // straight solder lugs toward the keys, wire legs down into the oval slots
+    for(k=[-1:1]){{ color("#d8c27a") translate([k*{L.POT_PITCH}-1,-({L.POT_CAN_D/2+L.POT_LUG_L}),{zPt+L.POT_LUG_Z}]) cube([2,{L.POT_LUG_L+0.5},{L.POT_LUG_T}]);
+      color("#bbb") translate([k*{L.POT_PITCH},-({L.POT_CAN_D/2+L.POT_LUG_L-1.2}),{zPt-L.PCB_T-1.2}]) cylinder(d=0.6,h={L.POT_LUG_Z+L.PCB_T+1.2},$fn=8); }}
     if(show_caps) translate([0,0,{zTop+4+2}+e3]){{ color("#2a2a2a") cylinder(d=14.35,h=16.8,$fn=24); color("#bbbbbb") translate([0,0,16.8]) cylinder(d=12,h=0.3); color("white") translate([-0.5,-6,17.1]) cube([1,4.5,0.2]); }}
     if(show_caps) color("#999") translate([0,0,{zTop+4}+e2]) difference(){{ cylinder(d=11,h=2,$fn=6); cylinder(d=7,h=5,center=true); }}
   }}

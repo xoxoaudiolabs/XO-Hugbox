@@ -25,17 +25,19 @@ translate([0,0,e1]){
   color("#111") translate([81.0,132.3,6.4]) cube([7,11,6]);
   color("#111") translate([87.0,136.5,9.4]) rotate([0,90,0]) cylinder(d=6,h=3.2);
   for(k=[[17.525, 17.525], [17.525, 36.575], [17.525, 55.625], [17.525, 74.67500000000001], [36.575, 17.525], [36.575, 36.575], [36.575, 55.625], [36.575, 74.67500000000001], [55.625, 17.525], [55.625, 36.575], [55.625, 55.625], [55.625, 74.67500000000001], [74.67500000000001, 17.525], [74.67500000000001, 36.575], [74.67500000000001, 55.625], [74.67500000000001, 74.67500000000001]]) color("#e9e2c8") translate([k[0]-3.8,k[1]-9.5,14.6]) rotate([0,90,0]) cylinder(d=1.9,h=7.6,$fn=12);
-  color("#1e5bd6") translate([35.0,128.7,18.900000000000002]) cube([36,34,1.2]);
-  color("#050505") translate([35.25,138.6,20.1]) cube([35.5,21,1.6]);
-  color("#7fd7ff") translate([39.0,139.89999999999998,21.71]) cube([28,1.2,0.05]);
-  color("#7fd7ff") translate([39.0,149.39999999999998,21.71]) cube([18,3,0.05]);
-  for(i=[0:5]) color("#7fd7ff") translate([39.0+i*4.8,141.89999999999998,21.71]) cube([3,1+i*1.2,0.05]);
+  color("#1e5bd6") translate([35.30,129.00,18.900000000000002]) cube([35.4,33.5,1.2]);
+  color("#050505") translate([35.75,135.91,20.1]) cube([34.5,21.73,1.4]);
+  color("#7fd7ff") translate([39.0,138.8,21.71]) cube([28,1.2,0.05]);
+  color("#7fd7ff") translate([39.0,148.3,21.71]) cube([18,3,0.05]);
+  for(i=[0:5]) color("#7fd7ff") translate([39.0+i*4.8,140.8,21.71]) cube([3,1+i*1.2,0.05]);
   // pots - pin tab faces the keys
   for(i=[0:3]) translate([8.0+19.05/2+i*19.05,117.0,0]){
-    color("#b0a070") translate([-6,-13,18.1]) cube([12,13,1.4]);
-    color("#c8c8c8") translate([0,0,18.1]) cylinder(d=16.8,h=7.0);
-    color("#d0d0d0") translate([0,0,25.1]) cylinder(d=7,h=6.5);
-    color("#e0e0e0") translate([0,0,31.6]) cylinder(d=6,h=8.5);
+    color("#c8c8c8") translate([0,0,18.1]) cylinder(d=16.27,h=7.12);
+    color("#d0d0d0") translate([0,0,25.220000000000002]) cylinder(d=6.65,h=7.33);
+    color("#e0e0e0") translate([0,0,32.550000000000004]) cylinder(d=5.95,h=8.26);
+    // straight solder lugs toward the keys, wire legs down into the oval slots
+    for(k=[-1:1]){ color("#d8c27a") translate([k*5.0-1,-(12.515),23.380000000000003]) cube([2,4.88,0.5]);
+      color("#bbb") translate([k*5.0,-(11.315000000000001),15.3]) cylinder(d=0.6,h=8.08,$fn=8); }
     if(show_caps) translate([0,0,29.1+e3]){ color("#2a2a2a") cylinder(d=14.35,h=16.8,$fn=24); color("#bbbbbb") translate([0,0,16.8]) cylinder(d=12,h=0.3); color("white") translate([-0.5,-6,17.1]) cube([1,4.5,0.2]); }
     if(show_caps) color("#999") translate([0,0,27.1+e2]) difference(){ cylinder(d=11,h=2,$fn=6); cylinder(d=7,h=5,center=true); }
   }

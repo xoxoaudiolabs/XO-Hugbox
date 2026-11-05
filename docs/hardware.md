@@ -16,7 +16,7 @@ all generated from it.
 | 1 | **MAX98357A** I2S amp (generic 7-pin: LRC BCLK DIN GAIN SD GND VIN) | Header from the plain side, printed side facing the floor. GAIN floating = 9 dB, SD default (on, L+R mono). |
 | 1 | **PCM5102A** I2S DAC (purple module) | Printed side down along the right wall, jack out of the right wall. Jumpers: FLT L, DEMP L, XSMT H, FMT L. SCK is tied to GND on the PCB. |
 | 1 | 1.3" **SH1106** I2C OLED, 128×64 (36×34 mm, GND VCC SCK SDA) | Remove the header plastic; solder 0.8 mm above the board. |
-| 4 | WH148 **B10K** 16 mm pots + 14 mm knobs | Pins facing the keys. |
+| 4 | WH148 **B10K** 16 mm pots (straight lugs, 15 mm knurled shaft) + 15×17 mm black aluminium knobs (6 mm bore, set screw) | Lugs facing the keys, joined to the board with diode-lead wire legs (see the build guide). |
 | 17 | MX switches + 17 1u keycaps | 16 pads + shift. |
 | 16 | 1N4148 diodes | One per pad. |
 | 2 | 100 kΩ resistors | Battery voltage divider (R1, R2). |
@@ -34,8 +34,12 @@ Target: under $50 in parts per unit.
 
 These dimensions are estimates in `hardware/layout.py`. Measure your actual parts and update the file if they differ:
 
-1. Pot pin pitch 5.0 mm (`POT_PITCH`) and can height ~7 mm (`POT_BODY_H`).
-2. OLED 4-pin header centred on the module, ~2.6 mm from its edge (`OLED_HDR_FROM_EDGE`).
+1. Pots: **measured** on the WH148 B10Ks in hand: can 16.27 Ø × 7.12 mm, lugs 5.28 mm up and 4.38 mm past the can,
+   M7 collar 7.33 mm, shaft 5.95 Ø × 8.26 mm above the collar (`POT_*`). Lug pitch read 4.75 mm against the usual 5.0
+   (`POT_PITCH`); re-check by measuring across the outer lugs, but the wire legs and long slots absorb either value.
+2. OLED: **measured** module 35.56 × 33.66 (spec 35.4 × 33.5 used), glass 21.73 mm tall, 6.91 mm from the header edge
+   and 5.02 mm from the far edge (`OLED_*`). The board footprint keeps the header 2.6 mm from the pocket edge; the
+   module's own header distance (~2.1 mm, from a photo) only affects the printed plate, which clears both.
 3. PCM5102A module 33 × 17.5 mm, jack barrel 4.7 mm from its end (`PCM_LEN`, `PCM_W`, `JACK_FROM_END`).
 4. Speaker ear-hole spacing ~37 mm, ears about halfway down the 15.3 mm body (`SPK_EAR_PITCH`, `SPK_EAR_DROP`). Shell only.
 

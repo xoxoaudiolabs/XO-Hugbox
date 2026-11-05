@@ -1,15 +1,20 @@
 import layout as L
 pot_body_local = (L.Z_PCB + L.PCB_T + L.POT_BODY_H) - L.Z_PLATE_BOT   # pot can top, plate-local z
 strip_top = pot_body_local + 2.0
+lug_top_local = (L.Z_PCB + L.PCB_T + L.POT_LUG_Z + L.POT_LUG_T) - L.Z_PLATE_BOT   # top of the lugs, plate-local z
+lug_reach = L.POT_CAN_D/2 + L.POT_LUG_L          # lug tips, from the pot centre toward the keys
+strip_front = lug_reach + 1.0 + 1.6              # strip edge toward the keys: relief + 1.6 mm wall
 ox,oy=L.OLED_C
 top_holes=[list(h) for i,h in enumerate(L.HOLES) if i not in L.SUPPORT_ONLY]   # screwed from the top
 plate=f"""// XO-Hugbox - top plate (generated from layout.py; edit there, or tweak below)
 // Units mm. Plate-local z: 0 = underside, {L.PLATE_T} = top face.
 W={L.W}; H={L.H}; T={L.PLATE_T}; r=3;
 pitch={L.P}; cut=14; clip=1.5; pocket=16;
-pot_y={L.POT_Y}; pot_hole=7.5; pot_body_d=17.6; pot_top={pot_body_local:.2f}; strip_top={strip_top:.2f};
-oled_c=[{ox:.2f},{oy:.2f}]; oled_pcb=[36.4,34.4]; oled_glass=[35.5,21]; oled_win=[30.5,15.5];
-oled_win_off={L.OLED_WIN_OFF}; oled_glass_off={L.OLED_GLASS_OFF}; oled_pcb_d=1.2; oled_glass_d=2.8;
+pot_y={L.POT_Y}; pot_hole=7.5; pot_body_d={L.POT_CAN_D+1.3:.2f}; pot_top={pot_body_local:.2f}; strip_top={strip_top:.2f};
+lug_top={lug_top_local:.2f}; lug_reach={lug_reach:.2f}; strip_front={strip_front:.2f};
+oled_c=[{ox:.2f},{oy:.2f}]; oled_pcb=[36.4,{L.OLED_PCB_POCKET[1]-L.OLED_PCB_POCKET[0]:.2f}]; oled_pcb_cy={sum(L.OLED_PCB_POCKET)/2:.2f};
+oled_glass=[{L.OLED_GLASS[0]+1:.2f},{L.OLED_GLASS[1]+1:.2f}]; oled_win=[{L.OLED_WIN[0]},{L.OLED_WIN[1]}];
+oled_win_off={L.OLED_WIN_OFF:.2f}; oled_glass_off={L.OLED_GLASS_OFF:.2f}; oled_pcb_d=1.2; oled_glass_d=2.8;
 spk=[{L.SPK['x0']},{L.SPK['y0']},{L.SPK['w']},{L.SPK['h']}]; spk_c=[{L.SPK_C[0]:.2f},{L.SPK_C[1]:.2f}]; grille_r=10;
 shift=[{L.SHIFT[0]},{L.SHIFT[1]}]; pwr=[{L.PWR[0]},{L.PWR[1]}];
 holes={[list(h) for h in L.HOLES]}; top_holes={top_holes};
@@ -21,22 +26,24 @@ difference(){{
   union(){{
     linear_extrude(T) offset(r=r) offset(delta=-r) square([W,H]);
     // raised strip over the pots so the nut clamps 2 mm of plastic above the can
-    translate([cx(0)-10.4,pot_y-10.4,0]) linear_extrude(strip_top) offset(r=2) offset(delta=-2)
-      square([W-3-(cx(0)-10.4),20.8]);
+    // (extends toward the keys far enough to cover the straight solder lugs)
+    translate([cx(0)-10.4,pot_y-strip_front,0]) linear_extrude(strip_top) offset(r=2) offset(delta=-2)
+      square([W-3-(cx(0)-10.4),strip_front+10.4]);
   }}
   for(i=[0:3]) for(j=[0:3]) sw(cx(i),cy(j));
   translate([7,7,-1]) cube([4*pitch+2,4*pitch+2,T-clip+1]);          // diode clearance
   sw(shift[0],shift[1]);
-  // pots: hole, can pocket, base-tab clearance
+  // pots: hole, can pocket, relief over the straight solder lugs (toward the keys) + their wire legs
   for(i=[0:3]) translate([cx(i),pot_y,0]){{
     translate([0,0,-1]) cylinder(d=pot_hole,h=strip_top+2,$fn=48);
     translate([0,0,-1]) cylinder(d=pot_body_d,h=pot_top+1,$fn=72);
+    translate([-7,-(lug_reach+1.0),-1]) cube([14,lug_reach+1.0,lug_top+0.8+1]);
   }}
   // 1 mm underside relief over the whole top section (module solder joints, pot tabs), solid around screws
   difference(){{ translate([3,8+4*pitch,-1]) cube([W-6,H-3-(8+4*pitch),2]);
     for(p=holes) translate([p[0],p[1],-2]) cylinder(r=4.5,h=5,$fn=32); }}
   // OLED
-  box(oled_c,oled_pcb,-1,oled_pcb_d);
+  box([oled_c[0],oled_pcb_cy],oled_pcb,-1,oled_pcb_d);
   box([oled_c[0],oled_c[1]+oled_glass_off],oled_glass,-1,oled_glass_d);
   box([oled_c[0],oled_c[1]+oled_win_off],oled_win,-1,T+1);
   // speaker locator + grille
@@ -93,4 +100,5 @@ difference(){{
 }}
 """
 open("xo_hugbox_shell.scad","w").write(shell)
+print("lug_top",round(lug_top_local,2),"strip_front",round(strip_front,2),"roof",round(strip_top-lug_top_local-0.8,2))
 print("usb_z",round(usb_z,2),"jack_z",round(jack_z,2),"spk_bottom",round(spk_bottom,2),"strip_top",round(strip_top,2))

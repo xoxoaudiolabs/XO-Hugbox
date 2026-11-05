@@ -33,9 +33,9 @@ window.HUGBOX_GUIDE = (() => {
     ['PCF8574T I/O expander module', 1, 'from a 5-pack; socket removed, address bridged to 0x20'],
     ['MAX98357A I2S amp module', 1, 'generic 7-pin (LRC BCLK DIN GAIN SD GND VIN)'],
     ['PCM5102A I2S DAC module (purple)', 1, 'jumpers FLT L, DEMP L, XSMT H, FMT L'],
-    ['1.3" SH1106 I2C OLED 128×64', 1, '36×34 mm, pins GND VCC SCK SDA'],
-    ['WH148 B10K 16 mm pot', 4, 'with nut + washer'],
-    ['14 mm knob', 4, ''],
+    ['1.3" SH1106 I2C OLED 128×64', 1, '35.4×33.5 mm, pins GND VCC SCK SDA'],
+    ['WH148 B10K 16 mm pot (straight lugs)', 4, 'with nut + washer; 12 diode lead offcuts as wire legs'],
+    ['15×17 mm black aluminium knob, 6 mm set screw', 4, 'silver chamfer + pointer line'],
     ['MX switch', 17, '16 pads + shift'],
     ['1u MX keycap', 17, '16 + one for shift (orange in the render)'],
     ['1N4148 diode', 16, 'one per pad'],
@@ -74,7 +74,8 @@ window.HUGBOX_GUIDE = (() => {
         <ol>
           <li><b>16× 1N4148</b> at D1–D16, one under each pad. Bend the leads to 7.62 mm.</li>
           <li><b>2× 100 kΩ</b> at R1 and R2 (brown-black-yellow), the battery-sense divider into D9.</li>
-          <li>Solder on the top side and clip the leads <b>flush</b> - the plate sits only 1 mm above the top.</li>
+          <li>Solder on the top side and clip the leads <b>flush</b> - the plate sits only 1 mm above the top.
+          <b>Keep 12 of the clipped leads</b>: they become the pot wire legs in step 6.</li>
         </ol>
         <div class="callout warn"><b>Diode polarity:</b> the black band (cathode) goes to the <b>square pad</b>.
         The square pad is the row line (R0–R3); the round pad goes to the switch. A reversed diode makes that pad dead.</div>`,
@@ -133,11 +134,14 @@ window.HUGBOX_GUIDE = (() => {
       title: 'Pots, OLED and power switch (top, before the plate)', view: V.underplate, focus: ['pots', 'oled', 'power'],
       ghost: ['plate', 'switches'], offsets: { plate: 45, switches: 45 },
       body: `
-        <div class="callout fix"><b>Before the plate:</b> all three sit <i>under</i> the plate (pot cans in the strip pockets,
+        <div class="callout fix"><b>Before the plate:</b> all three sit <i>under</i> the plate (pot cans and lugs in the strip pockets,
         OLED in its window pocket, switch body in its slot). Place them now, solder them in step 7.</div>
         <ol>
-          <li><b>4× WH148 B10K</b>: pins <b>facing the keys</b>, into the plated oval slots (GND, wiper, 3V3 left to right).
-          The slots make the exact pin offset irrelevant.</li>
+          <li><b>4× WH148 B10K</b>, straight-lug type: the lugs leave the side of the can about 5.3 mm up and are too short to
+          bend down to the board. First, on the bench, solder a <b>diode lead offcut</b> to the tip of each lug, pointing straight
+          down past the bottom of the can (about 9 mm sticking out below the lug).</li>
+          <li>Set each pot on the board with its <b>lugs facing the keys</b> and the three legs in the plated oval slots
+          (GND, wiper, 3V3 left to right). The slots are long, so the exact leg position does not matter.</li>
           <li><b>OLED</b>: pull the black plastic off its header. Header toward the pots, so the module is <b>upside down</b>
           (the firmware's <code>U8G2_R2</code> turns the picture back). Board pads read SDA SCL VCC GND left to right.
           It must end up <b>0.8 mm above the board</b> - the plate pocket sets that height in the next step.</li>
@@ -151,7 +155,7 @@ window.HUGBOX_GUIDE = (() => {
           <li>Put a <b>1 mm spacer</b> on each of the five screw holes.</li>
           <li>Lower plate + switches onto the board: every switch's pins through, pot shafts up through their holes,
           OLED glass into its window, slide actuator in its slot. Thread the pot nuts on loosely to hold the stack.</li>
-          <li>Flip it and solder: <b>17 switches</b>, then the <b>pots</b>, the <b>OLED</b> (check it is level and 0.8 mm up) and the <b>power switch</b>.</li>
+          <li>Flip it and solder: <b>17 switches</b>, then the <b>pot legs</b> (clip them flush afterwards), the <b>OLED</b> (check it is level and 0.8 mm up) and the <b>power switch</b>.</li>
         </ol>
         <div class="callout tip">Press each switch while it cools so it sits flat in the plate.</div>`,
     },
@@ -206,7 +210,7 @@ window.HUGBOX_GUIDE = (() => {
     },
     {
       title: 'Keycaps and knobs', view: V.caps, focus: ['keycaps', 'knobs'],
-      body: `<p>Keycaps on all 17 switches (shift is the orange one, top right), then the four <b>14 mm knobs</b>.</p>`,
+      body: `<p>Keycaps on all 17 switches (shift is the orange one, top right), then the four <b>15×17 mm knobs</b>: line them up at the same position and tighten the set screws.</p>`,
     },
     {
       title: 'First power-on: bring-up', view: V.screen, focus: [], screen: true,
