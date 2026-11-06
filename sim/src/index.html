@@ -235,7 +235,7 @@
         <div class="grid4">
           <span><b>1</b>PLAY</span><span><b>2</b>SEQ</span><span><b>3</b>SOUND</span><span><b>4</b>FX</span>
           <span><b>Q</b>PAGE 1</span><span><b>W</b>PAGE 2</span><span><b>E</b>PAGE 3</span><span><b>R</b>PAGE 4</span>
-          <span><b>A</b>DRUM</span><span><b>S</b>SYNTH</span><span><b>D</b>RUN/STOP</span><span><b>F</b>REC · hold: SAMPLE</span>
+          <span><b>A</b>DRUM</span><span><b>S</b>SYNTH</span><span><b>D</b>RUN/STOP</span><span><b>F</b>REC · hold 2 s: sample</span>
           <span><b>Z</b>STANDALONE</span><span><b>X</b>CONTROLLER</span><span><b>C</b>LAYERED</span><span><b>V</b>SETTINGS</span>
         </div>
         <ul>
@@ -289,7 +289,8 @@
       <h2>Mic · samples</h2>
       <div class="note">The board's INMP441 mic listens through the small hole marked <b>MIC</b> between the keys and the knobs.
         Here your computer's mic stands in for it (turned down 20 dB, about as sensitive as the INMP441).
-        <kbd>Shift</kbd> + <b>hold</b> <kbd>F</kbd> (REC) for 0.6 s opens SAMPLE; then hold a pad to record onto it.
+        Press <kbd>Shift</kbd>, hold <kbd>F</kbd> (REC), let go of Shift and keep holding: after 2 s it beeps, then records
+        onto the selected pad until you let go of F. In SAMPLE, holding a pad does the same onto that pad.
         Use headphones if you turn the monitor on.</div>
       <div class="row"><button id="micBtn">Use mic</button><span class="stat" id="micState">mic off</span></div>
       <div class="row"><span class="stat" id="smpState"></span><button id="smpClear">Clear saved samples</button></div>
@@ -334,7 +335,7 @@
         Knobs only take over a value once you turn them past it (the readout shows <i>TURN</i> until then).
         In SEQ, tap a pad to toggle a step; hold a step and turn a knob to set its velocity / pitch / gate / probability.
         Synth track: chords and the arpeggiator are on SOUND page 3 (Shift + SND until it shows CHORD/ARP), or on the PLAY view's shift knobs.
-        <b>Shift + hold F</b> (REC) opens SAMPLE: hold a pad to record the mic onto it, tap a pad to play it.</div>
+        <b>Shift + hold F</b> (REC) 2 s: a beep, then the mic records onto the selected pad until you let go (SAMPLE view).</div>
       <div class="note" id="bringNote">Pad n = C4 + n semitones (pad 0 = C4 top-left … pad 15 = D#5). Lowest held pad wins. Shift + pad = 1 kHz.</div>
       <div class="keys" id="keymap"></div>
     </div>

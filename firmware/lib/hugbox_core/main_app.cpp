@@ -182,7 +182,7 @@ int MainApp::quantizedStep() const {
 }
 
 void MainApp::padDown(int pad, uint32_t now) {
-  if (pad == 11 && (shift_ || mapOpen_)) {           // REC: a tap arms sequencer record, held 0.6 s opens SAMPLE
+  if (pad == 11 && (shift_ || mapOpen_)) {           // REC: a tap arms sequencer record, held 2 s records a sample
     if (shift_) shiftUsed_ = true;
     mapOpen_ = false;
     recHold_ = true;
@@ -470,7 +470,7 @@ void MainApp::drawPadGrid(uint32_t now) {
       fill = userFrames_[m_.drum[v][P_D_SMPL - P_D_PTCH] & 15] > 0;
       mark = v == m_.value[P_SPAD];
       held = (pads_ >> pad) & 1;
-      if (pad == recPad_ && recState_ == R_REC && ((now / 150) & 1)) fill = !fill;
+      if (pad == recShow_ && (recState_ == R_REC || beeping_) && ((now / 150) & 1)) fill = !fill;
     } else if (view_ == V_SEQ) {
       const int idx = seqPage_ * 16 + pad;
       const Step &st = track_ == T_DRUM ? m_.drumSteps[m_.value[P_SPAD]][idx] : m_.synthSteps[idx];
@@ -688,7 +688,7 @@ const char *MainApp::status() {
     strncat(status_, t, sizeof status_ - strlen(status_) - 1);
   }
   if (view_ == V_SMP)
-    strncat(status_, recState_ == R_REC ? " · recording" : recState_ == R_ARMED ? " · waiting for sound" : " · sampling",
+    strncat(status_, recState_ == R_REC ? " · recording" : recState_ == R_ARMED ? " · waiting for sound" : beeping_ ? " · beep" : " · sampling",
             sizeof status_ - strlen(status_) - 1);
   if (playing_) {
     char t[24];
@@ -853,12 +853,21 @@ void MainApp::render(int16_t *buf, int frames) {
   const float mvol = m_.value[P_MVOL] / 100.0f * 1.6f;
   const bool mute = mode_ == M_CTL || recState_ == R_REC || recState_ == R_ARMED;   // a take hears only the mic
   const bool mon = monValid_, off = muteOut_;
+  if (beepReq_) { beepReq_ = false; beepPos_ = 0; }
   for (int n = 0; n < frames; n++) {
     // tanh-shaped limiter: linear for normal levels, rounds off only when several voices pile up
     float l = dsp::tanhish(L[n] * mvol);
     float r = dsp::tanhish(R[n] * mvol);
     if (mute) l = r = 0;
     if (mon) { l += mon_[n] * 0.7f; r += mon_[n] * 0.7f; }   // monitor: use headphones, or it feeds back
+    if (beepPos_ >= 0) {                          // the count-in beep: 1 kHz with 5 ms ramps, over everything
+      const int len = SAMPLE_RATE * BEEP_MS / 1000, ramp = SAMPLE_RATE / 200;
+      const int k = beepPos_++, e = k < ramp ? k : len - k < ramp ? len - k : ramp;
+      const float b = 0.4f * e / ramp * sinf(6.2831853f * 1000.0f * k / SAMPLE_RATE);
+      l += b;
+      r += b;
+      if (beepPos_ >= len) beepPos_ = -1;
+    }
     if (off) l = r = 0;
     buf[2 * n] = (int16_t)(l * 32000.0f);
     buf[2 * n + 1] = (int16_t)(r * 32000.0f);

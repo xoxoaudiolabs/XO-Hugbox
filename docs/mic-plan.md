@@ -99,14 +99,15 @@ is in copper; everything else only changes the plate.
 - Samples are global (a user kit), not per project; the project format is unchanged apart from the new settings.
 
 **UI (keeps the rules: holding Shift never changes the screen, knob pick-up):**
-- **Opening SAMPLE:** **Shift + REC held for 0.6 s** (the shortcut map shows REC/SMP). A quick tap is still sequencer
-  record. Choosing DRUM/SYNTH from SAMPLE jumps to PLAY, like FX and SETTINGS.
-- **Record:** **hold a pad**; release stops, 20 s at most. The take is trimmed, plays back once, and the pad shows
+- **Record from anywhere:** press Shift, hold REC, let go of Shift. At **2 s** a 150 ms 1 kHz beep plays; the take starts
+  100 ms after it (so the mic doesn't catch the beep) on the selected pad, in the SAMPLE view, and stops when REC is let
+  go. Letting go during the beep records nothing. A release before 2 s is still sequencer record (the map shows REC/SMP). Choosing DRUM/SYNTH from SAMPLE jumps to PLAY, like FX and SETTINGS.
+- **Record in SAMPLE:** **hold a pad** 0.25 s: the same beep, then the take; release stops, 20 s at most. The take is trimmed, plays back once, and the pad shows
   `U01`–`U16` everywhere (PLAY, SEQ, SOUND, the pad grid). A tap selects a pad and plays it.
 - **Screens:** the recorder (free time, pad, state, input meter with the threshold mark, pad grid with recorded pads
   filled) while nothing is selected or a pad is held, and while GAIN was turned in the last 1.5 s; otherwise the editor.
 - **Knobs:** 1 STRT, 2 END, 3 FDIN, 4 FDOU | Shift: GAIN, NORM, REV, SRC (USER/KIT: turn to KIT to revert the pad; back to USER undoes it while you are still in the view).
-  On SETTINGS, Shift: THRS (start threshold, OFF = start on the press) and MON (mic monitor).
+  On SETTINGS, Shift: THRS (start threshold, OFF = start right after the beep; on, up to 300 ms before the sound is kept) and MON (mic monitor).
 - **Saving:** on leaving the view: the output mutes, "SAVING SAMPLES" shows, then the files are written.
 - **Output while recording:** the instrument is muted during a take (so the speaker doesn't feed the mic); with MON on
   the mic is heard. On board v1 the speaker and jack share one stream, so use MON with headphones only.

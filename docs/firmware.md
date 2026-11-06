@@ -57,7 +57,7 @@ same time. If an upload can't find the port, hold **BOOT** while plugging the bo
 
 - **Views:** PLAY, SEQ, SOUND, FX, SETTINGS, SAMPLE. **Tracks:** DRUM, SYNTH. **Modes:** Standalone, Controller (MIDI only), Layered.
 - **Shift + pad:** top row PLAY · SEQ · SOUND (again = next page) · FX; row 2 sequencer pages 1-4; row 3 DRUM · SYNTH ·
-  run/stop · record (held 0.6 s: SAMPLE); bottom row Standalone · Controller · Layered · SETTINGS. Holding Shift flips the knobs to their
+  run/stop · record (held 2 s: beep, then a sample take); bottom row Standalone · Controller · Layered · SETTINGS. Holding Shift flips the knobs to their
   second four without changing the screen; double-tapping Shift shows the shortcut map.
 - **Knob pick-up:** a value only follows the knob once the knob passes it, so values never jump when pages change.
 - **Sequencer:** 64 steps (4 pages × 16), swing, pattern length, live recording, per-step velocity/pitch/gate/probability.
@@ -66,7 +66,8 @@ same time. If an upload can't find the port, hold **BOOT** while plugging the bo
 - **SETTINGS pads:** S1-S8 (tap = load, hold = save), copy/paste/clear page, clear track (hold), mute drums/synth,
   tap tempo, MIDI panic. Knobs: synth MIDI channel, drum MIDI channel, clock source, Bluetooth; Shift: brightness,
   mic start threshold, mic monitor.
-- **SAMPLE:** hold a pad to record the mic onto it (up to 20 s), tap to select and play. The take is trimmed to the
+- **SAMPLE:** Shift + REC held 2 s (Shift can be let go) beeps, then records the mic onto the selected pad until REC is
+  let go (up to 20 s). In SAMPLE a pad held 0.25 s does the same onto that pad; a tap selects and plays. The take is trimmed to the
   sound and opens in the sample editor: START, END, fade in, fade out | Shift: gain, normalise, reverse, USER/KIT.
   Recorded pads show as U01-U16. Saved to flash on leaving the view.
 

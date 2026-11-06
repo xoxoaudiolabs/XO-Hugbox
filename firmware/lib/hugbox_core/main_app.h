@@ -56,7 +56,9 @@ class MainApp : public App {
   // less the projects, LittleFS's own blocks and room to rewrite a slot).
   static constexpr uint32_t TAKE_MAX = SAMPLE_RATE * 20;
   static constexpr uint32_t USER_MAX = 2300000;
-  static constexpr int PREROLL = SAMPLE_RATE * 3 / 10;   // 300 ms kept from before the start (covers the hold delay)
+  static constexpr int PREROLL = SAMPLE_RATE * 3 / 10;   // with THRS on: up to 300 ms kept from before the sound
+  static constexpr uint32_t HOLD_REC_MS = 2000;          // Shift + REC held this long: the beep, then a take
+  static constexpr uint32_t BEEP_MS = 150, BEEP_GAP_MS = 100;   // the count-in beep, and the quiet after it
 
  private:
   // ---- control core ----
@@ -96,6 +98,8 @@ class MainApp : public App {
   void sampleLoop(uint32_t now);
   void samplePadDown(int pad, uint32_t now);
   void samplePadUp(int pad, uint32_t now);
+  void recHeld(uint32_t now);
+  void startBeep(uint32_t now);
   void finishTake(uint32_t now);
   bool loadSource(int slot);
   void makeWave();
@@ -111,7 +115,8 @@ class MainApp : public App {
   // recorder (audio core owns recState_; the control core only raises the request flags)
   int16_t *recBuf_ = nullptr;          // TAKE_MAX frames: the take, later the sample editor's source
   volatile uint8_t recState_ = R_IDLE;
-  volatile bool recArm_ = false, recStop_ = false, recCancel_ = false, recAck_ = false;
+  volatile bool recArm_ = false, recStop_ = false, recCancel_ = false, recAck_ = false, beepReq_ = false;
+  int beepPos_ = -1;                   // audio core: frame of the count-in beep, -1 = none
   volatile uint32_t recLen_ = 0;
   int16_t pre_[PREROLL];               // pre-roll ring (audio core)
   uint32_t preHead_ = 0, preFill_ = 0;
@@ -120,9 +125,10 @@ class MainApp : public App {
   volatile bool monValid_ = false;
   volatile float micPeak_ = 0;         // peak since the screen last looked, 0..1 after the gain
   float meter_ = 0;
-  int recPad_ = -1, recSlot_ = 0;
-  bool recArmed_ = false;
-  uint32_t recPadMs_ = 0;
+  int recPad_ = -1, recSlot_ = 0;      // the held key that runs the take (a pad, or REC), the slot it records onto
+  int recShow_ = -1;                   // the pad that blinks while it records
+  bool recArmed_ = false, recViaRec_ = false, beeping_ = false;
+  uint32_t recPadMs_ = 0, beepMs_ = 0;
   // the sample editor (a port of XOXO Studio's): the source (a fresh take, or a copy of the pad's sample) in recBuf_
   struct Edit {
     uint32_t len = 0;                  // source frames, 0 = none
@@ -139,7 +145,7 @@ class MainApp : public App {
   int16_t *userData_[16] = {};
   bool userDirty_[16] = {};            // changed since the last save
   char userName_[16][4] = {};
-  bool recHold_ = false;               // Shift + REC down: a tap = record arm, held = SAMPLE view
+  bool recHold_ = false;               // Shift + REC down: a tap = sequencer record arm, held 2 s = beep + take
   uint32_t recHoldMs_ = 0;
   int lastView_ = V_PLAY;
   uint32_t saveAtMs_ = 0;              // > 0: write the user samples then (the output is muted first)

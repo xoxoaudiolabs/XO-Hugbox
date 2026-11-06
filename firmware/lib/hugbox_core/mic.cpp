@@ -4,7 +4,8 @@
 // Audio core: micIn() runs the input chain (gain, 20 Hz DC blocker, 16-bit) into a 300 ms pre-roll ring, and into
 // recBuf_ while a take records. The control core only raises request flags (recArm_, recStop_, recCancel_, recAck_);
 // the audio core owns recState_.
-// Control core: a pad held for TAP_MS arms a take (the pre-roll covers the press); releasing it stops the take.
+// Control core: Shift + REC held 2 s (anywhere), or a pad held TAP_MS in the SAMPLE view, plays a short beep; the
+// take starts right after it and stops when that key is let go. Letting go before the take starts cancels it.
 // The sample editor is a port of XOXO Studio's (fm1-bt-bridge/sampler.py + sampleui.py, same author): the same
 // opening selection, fades, -6 dBFS normalise and reverse, and the same 128-column waveform with two markers, so a
 // sample comes out the way the Studio would make it. Its source is the raw take, or a copy of the pad's sample, in
@@ -18,8 +19,7 @@
 namespace hugbox {
 
 static inline int voiceForPad(int pad) { return (3 - pad / 4) * 4 + pad % 4; }   // same as main_app.cpp
-static constexpr uint32_t TAP_MS = 250;           // a shorter press selects and plays the pad instead of recording
-static constexpr uint32_t HOLD_SAMPLE_MS = 600;   // Shift + REC held this long opens the SAMPLE view
+static constexpr uint32_t TAP_MS = 250;           // in SAMPLE, a shorter press selects and plays the pad instead
 // sampler.py's numbers
 static constexpr int SILENCE = 184;                       // -45 dBFS: quieter than this is the silence around a take
 static constexpr uint32_t SHORTEST = SAMPLE_RATE / 50;    // 20 ms: a selection can't be shorter
@@ -45,10 +45,8 @@ void MainApp::micIn(const int32_t *in, int n) {
   if (recArm_ && st == R_IDLE && recBuf_) {
     recArm_ = false;
     st = R_ARMED;
-    // the press itself may already have been loud enough: check what the pre-roll caught
-    if (thr <= 0) go = true;
-    else
-      for (uint32_t j = 0; j < preFill_ && !go; j++) if (iabs(pre_[j]) >= thr * 32767.0f) go = true;
+    preFill_ = 0;                                    // nothing from before the arm: that is the beep
+    go = thr <= 0;
   }
   float pk = micPeak_;
   for (int i = 0; i < n; i++) {
@@ -125,16 +123,41 @@ void MainApp::openSample(uint32_t now) {
 void MainApp::samplePadDown(int pad, uint32_t now) {
   m_.value[P_SPAD] = voiceForPad(pad);
   if (recPad_ >= 0 || recState_ != R_IDLE || !recBuf_ || saveAtMs_) return;   // one take at a time
-  recPad_ = pad;
+  recPad_ = recShow_ = pad;
   recPadMs_ = now;
+  recArmed_ = recViaRec_ = beeping_ = false;
+  recSlot_ = selSlot();
+}
+
+// Shift + REC held HOLD_REC_MS: open SAMPLE on the selected pad and start the beep; REC is now the take's key.
+void MainApp::recHeld(uint32_t now) {
+  openSample(now);
+  if (view_ != V_SMP || recPad_ >= 0 || recState_ != R_IDLE || saveAtMs_) return;
+  recPad_ = 11;
+  recShow_ = voiceForPad(m_.value[P_SPAD]);         // the mapping is its own inverse
+  recViaRec_ = true;
   recArmed_ = false;
   recSlot_ = selSlot();
+  startBeep(now);
+}
+
+void MainApp::startBeep(uint32_t now) {
+  beeping_ = true;
+  beepMs_ = now;
+  beepReq_ = true;
+  char t[24];
+  snprintf(t, sizeof t, "REC %s", userName_[recSlot_]);
+  toast(t, now);
 }
 
 void MainApp::samplePadUp(int pad, uint32_t now) {
   if (pad != recPad_) return;
   recPad_ = -1;
-  if (!recArmed_) { post(E_DRUM, voiceForPad(pad), 100); return; }   // a tap: play the pad
+  if (!recArmed_) {
+    if (beeping_) { beeping_ = false; toast("NOT RECORDED", now); }   // let go during the beep
+    else if (!recViaRec_) post(E_DRUM, voiceForPad(pad), 100);       // a tap: play the pad
+    return;
+  }
   if (recState_ == R_ARMED) toast("NOTHING OVER THRS", now);
   recStop_ = true;
 }
@@ -149,14 +172,17 @@ void MainApp::sampleLoop(uint32_t now) {
     p_.release((void *)retired_[retTail_]);
     retTail_ = (retTail_ + 1) & 31;
   }
-  if (recHold_ && now - recHoldMs_ >= HOLD_SAMPLE_MS) { recHold_ = false; openSample(now); }
-  if (recPad_ >= 0 && !recArmed_ && now - recPadMs_ >= TAP_MS) {   // held: arm a take (the pre-roll covers the press)
+  if (recHold_ && now - recHoldMs_ >= HOLD_REC_MS) { recHold_ = false; recHeld(now); }
+  if (recPad_ >= 0 && !recArmed_ && !beeping_ && now - recPadMs_ >= TAP_MS) startBeep(now);   // held: the beep first
+  if (recPad_ >= 0 && beeping_ && now - beepMs_ >= BEEP_MS + BEEP_GAP_MS) {   // then the take
+    beeping_ = false;
     recArmed_ = true;
     ed_.len = 0;                                       // recBuf_ is about to be overwritten
     recArm_ = true;
   }
   if (lastView_ == V_SMP && view_ != V_SMP) {          // leaving the view: drop a running take, save to flash
     recPad_ = -1;
+    beeping_ = false;
     if (recState_ != R_IDLE) recCancel_ = true;
     bool dirty = false;
     for (bool d : userDirty_) dirty |= d;
@@ -360,6 +386,7 @@ void MainApp::drawSample(uint32_t now) {
     snprintf(s, sizeof s, "REC %u.%02us", (unsigned)(recLen_ / SAMPLE_RATE), (unsigned)(recLen_ % SAMPLE_RATE * 100 / SAMPLE_RATE));
     if ((now / 250) & 1) u8g2_DrawDisc(g, 55, 38, 2, U8G2_DRAW_ALL);
   } else if (st == R_ARMED) strcpy(s, "WAITING...");
+  else if (beeping_) strcpy(s, "BEEP!");
   else if (recPad_ >= 0) strcpy(s, "HOLD...");
   else strcpy(s, "HOLD PAD = REC");
   u8g2_DrawStr(g, 0, 41, s);

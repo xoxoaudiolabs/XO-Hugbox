@@ -339,7 +339,7 @@
     micSrc.connect(sp);
     micOn = true;
     $('micBtn').textContent = 'Stop mic';
-    log('[emulator] mic on: Shift + hold F (REC) opens SAMPLE, then hold a pad to record\n');
+    log('[emulator] mic on: Shift + hold F (REC) 2 s: beep, then it records until you let go\n');
   });
 
   // ---------------- projects (localStorage) ----------------

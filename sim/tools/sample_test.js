@@ -1,6 +1,6 @@
 // Headless check of mic sampling in the WASM core (the same C++ as the firmware).
 // Usage: node sim/tools/sample_test.js [out-dir]   (out-dir: also writes OLED frames as .pbm)
-// Opens SAMPLE (Shift + REC held), records a tone burst onto a pad, checks the take, trims it with the START knob,
+// Holds Shift + REC 2 s (beep, then a take of a tone burst onto the selected pad), checks the take, trims it with the START knob,
 // leaves the view (save), then boots a fresh core on the saved samples. Exits 1 on a failed check.
 const path = require('path');
 const fs = require('fs');
@@ -51,22 +51,28 @@ async function boot() {
   };
 
   run(300);
-  // Shift + REC (pad 11) held 0.7 s opens SAMPLE (view 5)
-  shift = 1; run(20); pads = 1 << 11; run(700); pads = 0; run(20); shift = 0; run(100);
-  check(c._hb_view() === 5, 'Shift + REC held opens the SAMPLE view');
-  check(c._hb_mic_state() === 1, 'mic state: view open');
-  snap('oled_sample_ready');
-
-  // a quick tap of Shift + REC still arms sequencer record and stays in its view
-  // hold pad 12 (bottom-left = voice 0): 400 ms of silence, then 300 ms of tone, then 200 ms silence
-  pads = 1 << 12; run(400); check(c._hb_mic_state() === 3, 'holding a pad records'); tone = 1;
-  run(150); snap('oled_sample_recording'); run(150); tone = 0; run(200); pads = 0;
-  outPeak = 0; run(400);
+  // Shift down, REC (pad 11) down, Shift let go, REC held: at 2 s a beep, then the take runs until REC is let go
+  shift = 1; run(20); pads = 1 << 11; run(100); shift = 0; run(1700);
+  check(c._hb_view() === 0, 'REC held 1.8 s: still in PLAY, no beep yet');
+  outPeak = 0; run(300);
+  check(c._hb_view() === 5, 'REC held 2 s opens SAMPLE');
+  check(outPeak > 8000, `the beep plays (output peak ${outPeak})`);
+  check(c._hb_mic_state() === 1, 'not recording during the beep');
+  snap('oled_sample_beep');
+  run(200);
+  check(c._hb_mic_state() === 3, 'recording starts right after the beep');
+  tone = 1; run(150); snap('oled_sample_recording'); run(150); tone = 0; run(200);
+  pads = 0; outPeak = 0; run(400);
   const f = c._hb_user_frames(0);
   check(f > 0.3 * 44100 && f < 0.45 * 44100, `take trimmed to the tone: ${(f / 44100).toFixed(3)} s (0.30 + 5 ms + 50 ms)`);
   check(outPeak > 3000, `the take plays back once (output peak ${outPeak})`);
   check(logs.some((l) => l.startsWith('take:')), 'take logged: ' + (logs.find((l) => l.startsWith('take:')) || '').trim());
   snap('oled_sample_editor');
+
+  // in SAMPLE, a pad held past 250 ms beeps too; let go during the beep and nothing is recorded
+  pads = 1 << 13; run(300); pads = 0; run(300);
+  check(c._hb_user_frames(1) === 0 && c._hb_mic_state() === 1, 'pad let go during the beep: nothing recorded');
+  pads = 1 << 12; run(50); pads = 0; run(100);    // back to pad 12 (voice 0) for the editor checks
 
   // START knob (knob 0) from 0 to the middle: pick-up, then the selection shrinks
   for (let v = 0; v <= 2048; v += 64) { pots[0] = v; run(12); }
