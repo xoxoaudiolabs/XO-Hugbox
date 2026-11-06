@@ -57,7 +57,6 @@ class MainApp : public App {
   static constexpr uint32_t TAKE_MAX = SAMPLE_RATE * 20;
   static constexpr uint32_t USER_MAX = 2300000;
   static constexpr int PREROLL = SAMPLE_RATE * 3 / 10;   // with THRS on: up to 300 ms kept from before the sound
-  static constexpr uint32_t HOLD_REC_MS = 2000;          // Shift + REC held this long: the beep, then a take
   static constexpr uint32_t BEEP_MS = 150, BEEP_GAP_MS = 100;   // the count-in beep, and the quiet after it
 
  private:
@@ -98,12 +97,15 @@ class MainApp : public App {
   void sampleLoop(uint32_t now);
   void samplePadDown(int pad, uint32_t now);
   void samplePadUp(int pad, uint32_t now);
-  void recHeld(uint32_t now);
-  void startBeep(uint32_t now);
+  void startTake(int pad, uint32_t now);
+  void stopTake(uint32_t now);
+  void sampleRecKey(uint32_t now);
+  void saveTo(int pad, uint32_t now);
+  void dropEdit();
   void finishTake(uint32_t now);
-  bool loadSource(int slot);
+  void loadSource(int src, uint32_t now);
   void makeWave();
-  bool buildSample(uint32_t now);
+  bool buildSample(int slot, uint32_t now);
   void installSample(int slot, int16_t *data, uint32_t frames);
   void saveSamples();
   bool editorShown(uint32_t now) const;
@@ -111,7 +113,7 @@ class MainApp : public App {
   void editSet(uint8_t id, int v);
   void drawEditor(uint32_t now);
   int selSlot() const { return m_.drum[m_.value[P_SPAD]][P_D_SMPL - P_D_PTCH] & 15; }
-  bool takeHere() const { return ed_.len && ed_.slot == selSlot(); }
+  bool takeHere() const { return ed_.len != 0; }
   // recorder (audio core owns recState_; the control core only raises the request flags)
   int16_t *recBuf_ = nullptr;          // TAKE_MAX frames: the take, later the sample editor's source
   volatile uint8_t recState_ = R_IDLE;
@@ -125,34 +127,43 @@ class MainApp : public App {
   volatile bool monValid_ = false;
   volatile float micPeak_ = 0;         // peak since the screen last looked, 0..1 after the gain
   float meter_ = 0;
-  int recPad_ = -1, recSlot_ = 0;      // the held key that runs the take (a pad, or REC), the slot it records onto
+  enum SmpStage : uint8_t { ST_READY, ST_EDIT, ST_SAVE };
+  uint8_t stage_ = ST_READY;           // SAMPLE: ready to record, trimming a take, SAVE TO PAD?
+  int recPad_ = -1;                    // the pad held for the take (or, in the editor, maybe about to be)
   int recShow_ = -1;                   // the pad that blinks while it records
-  bool recArmed_ = false, recViaRec_ = false, beeping_ = false;
+  bool recArmed_ = false, beeping_ = false;
+  bool recLatch_ = false;              // let go during the beep: the take runs until the next pad tap
+  bool holdWait_ = false;              // editor: a pad is down; held NEW_TAKE_MS it starts a new take
+  int swallow_ = -1, confirmPad_ = -1; // a pad whose release is ignored; a recorded pad tapped once in SAVE
+  int srcSel_ = 0;                     // SOURCE knob: 0 mic, 1..16 kit sound, 17..32 recording
+  bool srcPending_ = false;
+  uint32_t srcMs_ = 0;
   uint32_t recPadMs_ = 0, beepMs_ = 0;
   // the sample editor (a port of XOXO Studio's): the source (a fresh take, or a copy of the pad's sample) in recBuf_
   struct Edit {
     uint32_t len = 0;                  // source frames, 0 = none
-    int slot = -1;                     // sample slot it belongs to
+    int src = 0;                       // where it came from (the SOURCE numbering; 0 = a take)
     uint32_t start = 0, end = 0;       // selection, frames
     int fadeIn = 0, fadeOut = 1;       // x 10 ms
     bool norm = true, rev = false;
   } ed_;
   int8_t wave_[128][2] = {};           // (low, high) per OLED column, +-60
   bool rebuild_ = false;
-  uint32_t rebuildMs_ = 0, gainMs_ = 0;
+  uint32_t rebuildMs_ = 0;
   // user samples: control-core copy of what the sampler holds
   uint32_t userFrames_[16] = {};
   int16_t *userData_[16] = {};
   bool userDirty_[16] = {};            // changed since the last save
   char userName_[16][4] = {};
-  bool recHold_ = false;               // Shift + REC down: a tap = sequencer record arm, held 2 s = beep + take
+  bool recHold_ = false;               // Shift + REC down: a tap = sequencer record arm, held 1 s = SAMPLE
   uint32_t recHoldMs_ = 0;
   int lastView_ = V_PLAY;
   uint32_t saveAtMs_ = 0;              // > 0: write the user samples then (the output is muted first)
   volatile bool muteOut_ = false;
   // new sample buffers to the audio core, replaced ones back for freeing
-  const int16_t *newData_[16] = {};
-  uint32_t newLen_[16] = {};
+  static constexpr int PREVIEW = 16;   // sampler slot for the editor's sound
+  const int16_t *newData_[17] = {};
+  uint32_t newLen_[17] = {};
   const int16_t *retired_[32] = {};
   volatile uint8_t retHead_ = 0, retTail_ = 0;
 
@@ -200,7 +211,7 @@ class MainApp : public App {
 
   // ---- audio core ----
   struct Event { uint8_t type, a, b; };
-  enum { E_DRUM, E_NOTE_ON, E_NOTE_OFF, E_ALL_OFF, E_ARP_ADD, E_ARP_DEL, E_ARP_CLEAR, E_EXT_STEP, E_SMP_SET };
+  enum { E_DRUM, E_NOTE_ON, E_NOTE_OFF, E_ALL_OFF, E_ARP_ADD, E_ARP_DEL, E_ARP_CLEAR, E_EXT_STEP, E_SMP_SET, E_PREVIEW };
   void arpStep();
   bool post(uint8_t type, uint8_t a = 0, uint8_t b = 0);
   void hitDrum(int voice, int vel, int semis = 0);

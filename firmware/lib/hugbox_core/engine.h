@@ -58,6 +58,8 @@ class Sampler {
   // so the caller can free it outside the audio core.
   const int16_t *setUser(int i, const int16_t *data, uint32_t len);
   bool hasUser(int i) const { return u_[i].data != nullptr; }
+  // Plays user slot i as it is (no pad settings) on its own voice: the sample editor's preview (slot 16).
+  void preview(int i);
 
  private:
   struct Voice {
@@ -69,8 +71,8 @@ class Sampler {
     bool filtered = false;
   };
   Sample s_[16];
-  Sample u_[16];
-  Voice v_[16];
+  Sample u_[17];                       // 16 user samples + the editor's preview
+  Voice v_[17];
 };
 
 // Built-in kit: 16 synthesized one-shots (kit.cpp). Recorded user samples (Sampler::setUser) play in their place.

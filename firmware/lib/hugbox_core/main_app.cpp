@@ -23,9 +23,12 @@ static const Page PG_SND_SYN[SYN_PAGES] = {
   {"CHORD/ARP", {P_CHRD, P_INV, P_ARP, P_ARPR, P_ARPO, P_ARPG, P_LTCH, P_ROOT}},
 };
 static const Page PG_FX = {"FX", {P_DTIM, P_DFB, P_DMIX, P_DRV, P_CRSH, P_RATE, P_SHPF, P_MVOL}};
-static const Page PG_SET = {"SETTINGS", {P_MCH, P_DCH, P_SYNC, P_BLE, P_BRT, P_MTHR, P_MMON, P_NONE}};
+static const Page PG_SET = {"SETTINGS", {P_MCH, P_DCH, P_SYNC, P_BLE, P_BRT, P_NONE, P_NONE, P_NONE}};
 // SAMPLE view: XOXO Studio's sample editor on the knobs; the gain and the editor's switches on the shift layer
-static const Page PG_SMP = {"SAMPLE", {P_MTST, P_MTEN, P_MFIN, P_MFOU, P_MGN, P_MNRM, P_MREV, P_MSRC}};
+// SAMPLE: ready to record (input), trimming (the editor), SAVE TO PAD? (pads only)
+static const Page PG_SMP = {"SAMPLE", {P_MGN, P_MTHR, P_MMON, P_MSRC, P_NONE, P_NONE, P_NONE, P_NONE}};
+static const Page PG_TRIM = {"TRIM", {P_MTST, P_MTEN, P_MFIN, P_MFOU, P_MNRM, P_MREV, P_NONE, P_MSRC}};
+static const Page PG_SAVE = {"SAVE", {P_NONE, P_NONE, P_NONE, P_NONE, P_NONE, P_NONE, P_NONE, P_NONE}};
 static const char *const VIEW_NAMES[V_COUNT] = {"PLAY", "SEQ", "SOUND", "FX", "SETTINGS", "SAMPLE"};
 static const char *const MODE_NAMES[3] = {"STD", "CTL", "LAY"};
 static const char *const MODE_LONG[3] = {"STANDALONE", "CONTROLLER", "LAYERED"};
@@ -80,7 +83,7 @@ const Page &MainApp::page() const {
       return track_ == T_DRUM ? PG_SEQ_DRUM : PG_SEQ_SYN;
     case V_SOUND: return track_ == T_DRUM ? PG_SND_DRUM : PG_SND_SYN[soundPage_];
     case V_FX: return PG_FX;
-    case V_SMP: return PG_SMP;
+    case V_SMP: return stage_ == ST_EDIT ? PG_TRIM : stage_ == ST_SAVE ? PG_SAVE : PG_SMP;
     default: return PG_SET;
   }
 }
@@ -111,7 +114,6 @@ void MainApp::setVal(uint8_t id, int v) {
   if (v < d.min) v = d.min;
   if (v > d.max) v = d.max;
   if (id >= P_MTST && id <= P_MSRC) { editSet(id, v); return; }
-  if (id == P_MGN || id == P_MTHR) gainMs_ = lastLoopMs_;   // the SAMPLE view shows its input meter
   if (id >= P_D_PTCH && id <= P_D_CHOK) { m_.drum[m_.value[P_SPAD]][id - P_D_PTCH] = v; return; }
   if (id >= P_ST_VEL && id <= P_ST_PROB) {
     Step *s = heldStepPtr();
@@ -153,7 +155,11 @@ void MainApp::fmtVal(uint8_t id, int v, char *out) const {
       sprintf(out, "%u.%02us", (unsigned)(f / SAMPLE_RATE), (unsigned)(f % SAMPLE_RATE * 100 / SAMPLE_RATE));
     } break;
     case F_FADE: if (v < 100) sprintf(out, "%dms", v * 10); else sprintf(out, "%d.%02ds", v / 100, v % 100); break;
-    case F_SRC: strcpy(out, v ? "USER" : "KIT"); break;
+    case F_SRC:                                        // SOURCE: MIC, a kit sound (KCK..), a recording (U01..)
+      if (v <= 0) strcpy(out, "MIC");
+      else if (v <= 16) strcpy(out, DRUM_NAMES[v - 1]);
+      else sprintf(out, "%s%s", userName_[(v - 17) & 15], userFrames_[(v - 17) & 15] ? "" : " --");
+      break;
     case F_CHORD: strcpy(out, CHORD_NAMES[v % 6]); break;
     case F_ARP: strcpy(out, ARP_NAMES[v % 6]); break;
     case F_ARPRATE: strcpy(out, ARP_RATE_NAMES[v % 6]); break;
@@ -182,7 +188,7 @@ int MainApp::quantizedStep() const {
 }
 
 void MainApp::padDown(int pad, uint32_t now) {
-  if (pad == 11 && (shift_ || mapOpen_)) {           // REC: a tap arms sequencer record, held 2 s records a sample
+  if (pad == 11 && (shift_ || mapOpen_)) {           // REC: a tap arms sequencer record, held 1 s opens SAMPLE
     if (shift_) shiftUsed_ = true;
     mapOpen_ = false;
     recHold_ = true;
@@ -237,7 +243,11 @@ void MainApp::padDown(int pad, uint32_t now) {
 }
 
 void MainApp::padUp(int pad, uint32_t now) {
-  if (pad == 11 && recHold_) { recHold_ = false; shortcut(11, now); return; }   // a quick tap
+  if (pad == 11 && recHold_) {                        // a quick tap (in SAMPLE: save the trimmed sound / back)
+    recHold_ = false;
+    if (view_ == V_SMP) sampleRecKey(now); else shortcut(11, now);
+    return;
+  }
   if (view_ == V_SET) { settingsPadUp(pad, now); return; }
   if (view_ == V_SMP) { samplePadUp(pad, now); return; }
   if (padDrum_[pad] >= 0) { midiSend(0x80 | (m_.value[P_DCH] - 1), padDrum_[pad], 0); padDrum_[pad] = -1; }
@@ -283,7 +293,7 @@ void MainApp::shortcut(int pad, uint32_t now) {
       // FX, SETTINGS and SAMPLE don't show a track, so picking one jumps to its PLAY view;
       // PLAY / SEQ / SOUND stay put and redraw for the new track
       if (view_ == V_FX || view_ == V_SET || view_ == V_SMP) view_ = V_PLAY;
-      toast(track_ == T_DRUM ? "DRUM TRACK" : "SYNTH TRACK", now);
+      toast(track_ == T_DRUM ? "SAMPLER TRACK" : "SYNTH TRACK", now);
       break;
     case 10:
       if (extSync_) { toast("FOLLOWING EXT CLOCK", now); break; }
@@ -305,7 +315,7 @@ void MainApp::shortcut(int pad, uint32_t now) {
   }
   heldStep_ = -1;
   for (int i = 0; i < 16; i++) releasePad(i);
-  logf("shift+pad %d -> %s %s %s%s\n", pad, VIEW_NAMES[view_], track_ == T_DRUM ? "DRUM" : "SYNTH",
+  logf("shift+pad %d -> %s %s %s%s\n", pad, VIEW_NAMES[view_], track_ == T_DRUM ? "SAMPLER" : "SYNTH",
        MODE_NAMES[mode_], playing_ ? " RUN" : "");
 }
 
@@ -353,7 +363,8 @@ void MainApp::loop(uint32_t now, const Inputs &in) {
     // A quick tap (no pad or knob used) closes the shortcut map; two quick taps open it.
     if (in.shift && !shift_) { shiftDownMs_ = now; shiftUsed_ = false; }
     if (!in.shift && shift_ && !shiftUsed_ && now - shiftDownMs_ < 300) {
-      if (mapOpen_) { mapOpen_ = false; lastTapMs_ = 0; }
+      if (view_ == V_SMP && stage_ == ST_SAVE) { stage_ = ST_EDIT; toast("BACK TO TRIM", now); lastTapMs_ = 0; }
+      else if (mapOpen_) { mapOpen_ = false; lastTapMs_ = 0; }
       else if (lastTapMs_ && now - lastTapMs_ < 400) { mapOpen_ = true; mapMs_ = now; lastTapMs_ = 0; }
       else lastTapMs_ = now;
     }
@@ -434,7 +445,7 @@ void MainApp::drawStatus(uint32_t now) {
   u8g2_SetDrawColor(g, 0);
   u8g2_DrawStr(g, 1, 7, MODE_NAMES[mode_]);
   u8g2_SetDrawColor(g, 1);
-  u8g2_DrawStr(g, 20, 7, track_ == T_DRUM ? "DRUM" : "SYNTH");
+  u8g2_DrawStr(g, 20, 7, track_ == T_DRUM ? "SMPL" : "SYNTH");
   snprintf(s, sizeof s, "%d", m_.value[P_BPM]);
   u8g2_DrawStr(g, 50, 7, s);
   snprintf(s, sizeof s, "P%d", seqPage_ + 1);
@@ -471,6 +482,7 @@ void MainApp::drawPadGrid(uint32_t now) {
       mark = v == m_.value[P_SPAD];
       held = (pads_ >> pad) & 1;
       if (pad == recShow_ && (recState_ == R_REC || beeping_) && ((now / 150) & 1)) fill = !fill;
+      if (stage_ == ST_SAVE) mark = pad == confirmPad_;
     } else if (view_ == V_SEQ) {
       const int idx = seqPage_ * 16 + pad;
       const Step &st = track_ == T_DRUM ? m_.drumSteps[m_.value[P_SPAD]][idx] : m_.synthSteps[idx];
@@ -633,7 +645,7 @@ void MainApp::drawReadout() {
 
 void MainApp::drawShiftMap() {
   static const char *const L[16] = {"PLAY", "SEQ", "SND", "FX", "PG1", "PG2", "PG3", "PG4",
-                                    "DRUM", "SYN", "RUN", "REC", "STD", "CTL", "LAY", "SET"};
+                                    "SMPL", "SYN", "RUN", "REC", "STD", "CTL", "LAY", "SET"};
   u8g2_t *g = p_.oled;
   u8g2_SetFont(g, F_SMALL);
   for (int pad = 0; pad < 16; pad++) {
@@ -678,7 +690,7 @@ void MainApp::drawToast() {
 
 const char *MainApp::status() {
   snprintf(status_, sizeof status_, "%s · %s · %s · %d BPM · %s%s%s", VIEW_NAMES[view_],
-           track_ == T_DRUM ? "drum" : "synth", MODE_LONG[mode_], m_.value[P_BPM],
+           track_ == T_DRUM ? "sampler" : "synth", MODE_LONG[mode_], m_.value[P_BPM],
            playing_ ? "running" : "stopped", rec_ ? " · rec" : "",
            shift_ ? " · shift" : "");
   if (track_ == T_SYNTH && (m_.value[P_CHRD] || m_.value[P_ARP])) {
@@ -688,7 +700,7 @@ const char *MainApp::status() {
     strncat(status_, t, sizeof status_ - strlen(status_) - 1);
   }
   if (view_ == V_SMP)
-    strncat(status_, recState_ == R_REC ? " · recording" : recState_ == R_ARMED ? " · waiting for sound" : beeping_ ? " · beep" : " · sampling",
+    strncat(status_, recState_ == R_REC ? " · recording" : recState_ == R_ARMED ? " · waiting for sound" : beeping_ ? " · beep" : stage_ == ST_EDIT ? " · trim" : stage_ == ST_SAVE ? " · save to which pad?" : " · ready",
             sizeof status_ - strlen(status_) - 1);
   if (playing_) {
     char t[24];
@@ -815,10 +827,12 @@ void MainApp::render(int16_t *buf, int frames) {
       case E_ARP_CLEAR: arpN_ = 0; arpNote_ = -1; break;
       case E_EXT_STEP: if (playing_) stepTick(); break;
       case E_SMP_SET: {                         // a new user sample (or none); the old buffer goes back to be freed
-        const int16_t *old = sampler_.setUser(e.a & 15, newData_[e.a & 15], newLen_[e.a & 15]);
+        const int i = e.a <= PREVIEW ? e.a : PREVIEW;
+        const int16_t *old = sampler_.setUser(i, newData_[i], newLen_[i]);
         const uint8_t next = (retHead_ + 1) & 31;
         if (old && next != retTail_) { retired_[retHead_] = old; retHead_ = next; }
       } break;
+      case E_PREVIEW: sampler_.preview(PREVIEW); break;
       default: synth_.releaseAll(); break;
     }
   }

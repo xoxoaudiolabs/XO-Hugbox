@@ -60,8 +60,8 @@ const ParamDef PARAMS[P_COUNT] = {
   {"SYNC", "Clock source", 0, 2, 0, F_SYNC},
   {"BLE", "Bluetooth MIDI", 0, 1, 1, F_ONOFF},
   {"BRT", "Screen brightness", 0, 100, 80, F_PCT},
-  {"DCH", "Drum MIDI channel", 1, 16, 10, F_NUM},
-  {"MUTD", "Mute drum track", 0, 1, 0, F_ONOFF},
+  {"SCH", "Sampler MIDI channel", 1, 16, 10, F_NUM},
+  {"MUTD", "Mute sampler track", 0, 1, 0, F_ONOFF},
   {"MUTS", "Mute synth track", 0, 1, 0, F_ONOFF},
   {"GAIN", "Mic gain", 0, 40, 24, F_DB},
   {"THRS", "Start threshold", 0, 100, 0, F_THR},
@@ -72,7 +72,7 @@ const ParamDef PARAMS[P_COUNT] = {
   {"FDOU", "Fade out", 0, 200, 1, F_FADE},
   {"NORM", "Normalise", 0, 1, 1, F_ONOFF},
   {"REV", "Reverse", 0, 1, 0, F_ONOFF},
-  {"SRC", "Pad sound", 0, 1, 0, F_SRC},
+  {"SRC", "Source: mic, a kit sound or a recording", 0, 32, 0, F_SRC},
 };
 
 const char *const DRUM_NAMES[16] = {"KCK", "SNR", "CLP", "CHH", "OHH", "TML", "TMH", "RIM",

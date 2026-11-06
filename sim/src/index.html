@@ -155,7 +155,7 @@
         </ol>
         <h3>Make a drum beat</h3>
         <ol>
-          <li><kbd>Shift</kbd> + <kbd>A</kbd> (DRUM), then <kbd>Shift</kbd> + <kbd>2</kbd> (SEQ).</li>
+          <li><kbd>Shift</kbd> + <kbd>A</kbd> (SAMPLER track), then <kbd>Shift</kbd> + <kbd>2</kbd> (SEQ).</li>
           <li>Knob 1 (<span class="lbl">PAD</span>) chooses which drum you're writing for: KCK, SNR, CHH…</li>
           <li>Tap pads to switch steps on/off (top-left = step 1, reading like text).</li>
           <li><kbd>Shift</kbd> + <kbd>D</kbd> (RUN) starts and stops it. Pick another drum with knob 1 and add its steps.</li>
@@ -178,29 +178,37 @@
         <ul><li><kbd>Shift</kbd> + <kbd>3</kbd> (SND) cycles <b>OSC</b> (waves, detune, mix, FM, drift, glide) →
           <b>FILTER</b> (cutoff, resonance, envelope, volume, ADSR) → <b>CHORD/ARP</b>.</li></ul>
         <h3>Change a drum sound</h3>
-        <ul><li>On the drum track, tap the pad, then <kbd>Shift</kbd> + <kbd>3</kbd> (SND): <span class="lbl">PTCH DCY CUT LVL</span>,
+        <ul><li>On the sampler track, tap the pad, then <kbd>Shift</kbd> + <kbd>3</kbd> (SND): <span class="lbl">PTCH DCY CUT LVL</span>,
           with Shift <span class="lbl">SMPL PAN CHOK KIT</span>.</li></ul>
         <h3>Add delay, drive or lo-fi</h3>
         <ul><li><kbd>Shift</kbd> + <kbd>4</kbd> (FX): knob 3 <span class="lbl">DLY</span> (amount), 1 <span class="lbl">TIME</span>
           (1/32…1/2, synced), 2 <span class="lbl">FDBK</span>, 4 <span class="lbl">DRV</span>; with Shift
           <span class="lbl">CRSH</span> (bits), <span class="lbl">LOFI</span>, <span class="lbl">LCUT</span> (low cut), <span class="lbl">MVOL</span>.</li></ul>
-        <h3>Record a sound onto a pad</h3>
+        <h3>Record a sample</h3>
         <ol>
           <li>Click <b>Use mic</b> (Mic · samples, below). On the Hugbox, the mic is the small hole marked MIC.</li>
-          <li><kbd>Shift</kbd> + <b>hold</b> <kbd>F</kbd> (REC) for a moment: the SAMPLE view opens with an input meter.
-            (A quick tap is still sequencer record.)</li>
-          <li><b>Hold</b> a pad, make the sound, let go. Up to 20 s. The take is trimmed to the sound and plays back once;
-            the pad now shows <b>U01</b>…<b>U16</b> on every screen.</li>
-          <li>Too quiet or clipping? <kbd>Shift</kbd> + knob 1 <span class="lbl">GAIN</span> (the meter shows while you turn it).
-            To start only when the sound does: SETTINGS, <kbd>Shift</kbd> + knob 2 <span class="lbl">THRS</span>.</li>
-          <li>Leave the view (<kbd>Shift</kbd> + any view) and the samples are saved.</li>
+          <li><kbd>Shift</kbd> + <b>hold</b> <kbd>F</kbd> (REC) for 1 s, then let go: SAMPLE opens on <b>READY</b> with an
+            input meter. (A quick tap is still sequencer record.) Knobs: <span class="lbl">GAIN</span>,
+            <span class="lbl">THRS</span> (wait for the sound to start), <span class="lbl">MON</span> (hear the mic),
+            <span class="lbl">SRC</span>.</li>
+          <li><b>Any pad</b> starts it: a beep, then recording. <b>Hold</b> the pad and let go to stop, or <b>tap</b> it and
+            tap any pad again to stop (hands free). Up to 20 s.</li>
+          <li>The take is trimmed to the sound, plays once and opens in the editor (below).</li>
+          <li><kbd>Shift</kbd> + <kbd>F</kbd> (REC): <b>SAVE TO PAD?</b> Tap the pad it goes on: it plays and shows
+            <b>U01</b>…<b>U16</b> on every screen. A pad that already has a recording asks for a second tap;
+            <kbd>Shift</kbd> goes back to trimming.</li>
+          <li>Leave with <kbd>Shift</kbd> + any view: the samples are saved (a take you didn't save is dropped).</li>
         </ol>
-        <h3>Edit a sample</h3>
-        <ul><li>In SAMPLE, tap a recorded pad: its waveform fills the screen (the same editor as XOXO Studio's). Knobs:
-          1 <span class="lbl">STRT</span>, 2 <span class="lbl">END</span> (the two markers), 3 <span class="lbl">FDIN</span>,
-          4 <span class="lbl">FDOU</span> (fades); with Shift <span class="lbl">GAIN</span>, <span class="lbl">NORM</span> (to -6 dB),
-          <span class="lbl">REV</span> (reverse) and <span class="lbl">SRC</span>: turn it to KIT to put the built-in sound back (back to USER undoes it until you leave SAMPLE).
-          Pitch, decay and filter are the pad's usual SOUND knobs.</li></ul>
+        <h3>Trim a sample</h3>
+        <ul><li>The editor is XOXO Studio's: knobs 1 <span class="lbl">STRT</span>, 2 <span class="lbl">END</span> (the two markers),
+          3 <span class="lbl">FDIN</span>, 4 <span class="lbl">FDOU</span> (fades); with Shift <span class="lbl">NORM</span>
+          (to -6 dB), <span class="lbl">REV</span> (reverse) and knob 4 <span class="lbl">SRC</span>. Every change plays the
+          result; tap any pad to hear it again, hold a pad 0.6 s for a new take.</li>
+          <li>To edit a sample already on a pad: on READY turn <span class="lbl">SRC</span> to it (U01…; turn it fully left
+            first so the knob picks up), trim, then save it back, or onto another pad for a copy.</li>
+          <li>To give a pad its built-in sound back: <span class="lbl">SRC</span> to that kit sound (KCK…), and save it
+            onto its pad untouched.</li>
+          <li>Pitch, decay and filter are the pad's usual SOUND knobs.</li></ul>
         <h3>Save or load a project</h3>
         <ol>
           <li><kbd>Shift</kbd> + <kbd>V</kbd> (SET). The top two pad rows are slots <b>S1-S8</b> (filled = has a project).</li>
@@ -212,13 +220,13 @@
           <li>On the SETTINGS pads: <b>CPY</b> copies the current sequencer page of the current track, <b>PST</b> pastes it onto
             the page you're on (pick pages with <kbd>Shift</kbd> + <kbd>Q</kbd>-<kbd>R</kbd>), <b>CLR</b> clears the page,
             <b>CLT</b> (hold) clears the whole track.</li>
-          <li><b>MDR</b> / <b>MSY</b> mute the drum / synth sequence (live pads still play).</li>
+          <li><b>MDR</b> / <b>MSY</b> mute the sampler / synth sequence (live pads still play).</li>
           <li><b>TAP</b> 3-4 times in time sets the tempo. <b>PNC</b> stops every stuck note (MIDI panic).</li>
         </ul>
         <h3>Play other gear over MIDI</h3>
         <ol>
           <li><kbd>Shift</kbd> + <kbd>C</kbd> (LAYERED) plays the Hugbox and sends MIDI; <kbd>Shift</kbd> + <kbd>X</kbd> (CONTROLLER) sends MIDI only.</li>
-          <li>Synth notes go out on <span class="lbl">MCH</span>, drums on <span class="lbl">DCH</span> (10): SETTINGS knobs 1-2.
+          <li>Synth notes go out on <span class="lbl">MCH</span>, the sampler track on <span class="lbl">SCH</span> (10, GM drum notes): SETTINGS knobs 1-2.
             The sequencer, arp and clock go out too.</li>
           <li>In Controller mode the knobs send CC 70-73 (Shift: 74-77) instead of changing sounds.</li>
           <li>Over Bluetooth: <span class="lbl">BLE</span> ON (SETTINGS knob 4), then pair "XO-Hugbox" in your app.</li>
@@ -235,13 +243,13 @@
         <div class="grid4">
           <span><b>1</b>PLAY</span><span><b>2</b>SEQ</span><span><b>3</b>SOUND</span><span><b>4</b>FX</span>
           <span><b>Q</b>PAGE 1</span><span><b>W</b>PAGE 2</span><span><b>E</b>PAGE 3</span><span><b>R</b>PAGE 4</span>
-          <span><b>A</b>DRUM</span><span><b>S</b>SYNTH</span><span><b>D</b>RUN/STOP</span><span><b>F</b>REC · hold 2 s: sample</span>
+          <span><b>A</b>SAMPLER</span><span><b>S</b>SYNTH</span><span><b>D</b>RUN/STOP</span><span><b>F</b>REC · hold: SAMPLE</span>
           <span><b>Z</b>STANDALONE</span><span><b>X</b>CONTROLLER</span><span><b>C</b>LAYERED</span><span><b>V</b>SETTINGS</span>
         </div>
         <ul>
           <li><b>Hold Shift</b>: the knobs switch to their second four (the bottom line of the screen turns inverted). The screen stays put.</li>
           <li><b>Double-tap Shift</b>: this map appears on the OLED; tap any pad to run its shortcut. Shift, a knob or 5 s closes it.</li>
-          <li>SOUND pressed again cycles the synth pages. Choosing DRUM/SYNTH from FX or SETTINGS jumps to that track's PLAY screen.</li>
+          <li>SOUND pressed again cycles the synth pages. Choosing SAMPLER/SYNTH from FX, SETTINGS or SAMPLE jumps to that track's PLAY screen.</li>
         </ul>
       </details>
 
@@ -254,7 +262,7 @@
           <li><b>Bottom line:</b> what knobs 1-4 do; inverted while Shift is held. The small bar under each shows its value.</li>
           <li><b>Turning a knob</b> pops up its full name and value. <span class="lbl">&lt; TURN</span> / <span class="lbl">TURN &gt;</span>
             means the knob hasn't reached the stored value yet: turn it that way until it catches (so values never jump).</li>
-          <li><b>Pad grid:</b> PLAY shows drum names or note names (root notes underlined, last-hit drum underlined).
+          <li><b>Pad grid:</b> PLAY shows pad names (kit sounds, or U01-U16 for recordings) or note names (root notes underlined, last-hit pad underlined).
             SEQ shows steps: filled = on, small block = playhead, dot = beyond the pattern length.</li>
         </ul>
       </details>
@@ -262,14 +270,13 @@
       <details>
         <summary>The views</summary>
         <ul>
-          <li><b>PLAY</b>: drums: 16 sounds, bottom-left is the kick. Synth: notes of the scale, bottom-left is the root, rising left→right, bottom→top.</li>
-          <li><b>SEQ</b>: 16 steps per page, 4 pages. Drum steps belong to the drum chosen with knob 1; synth steps play scale notes.</li>
-          <li><b>SOUND</b>: drum: the selected pad's sound. Synth: OSC, FILTER and CHORD/ARP pages.</li>
+          <li><b>PLAY</b>: sampler: 16 sounds (the kit or your recordings), bottom-left is the kick. Synth: notes of the scale, bottom-left is the root, rising left→right, bottom→top.</li>
+          <li><b>SEQ</b>: 16 steps per page, 4 pages. Sampler steps belong to the pad chosen with knob 1; synth steps play scale notes.</li>
+          <li><b>SOUND</b>: sampler: the selected pad's sound. Synth: OSC, FILTER and CHORD/ARP pages.</li>
           <li><b>FX</b>: master delay, drive, bitcrush, lo-fi, low cut and volume.</li>
           <li><b>SETTINGS</b>: pads = projects (S1-S8), page copy/paste/clear, track mutes, tap tempo, panic.
-            Knobs: synth MIDI channel, drum MIDI channel, clock source, Bluetooth; Shift: screen brightness, mic start
-            threshold (OFF = start on the press), mic monitor.</li>
-          <li><b>SAMPLE</b> (<kbd>Shift</kbd> + hold REC): record the mic onto pads and edit them. Filled pads hold a recording.</li>
+            Knobs: synth MIDI channel, sampler MIDI channel, clock source, Bluetooth; Shift: screen brightness.</li>
+          <li><b>SAMPLE</b> (<kbd>Shift</kbd> + hold REC 1 s): READY (record) → trim → SAVE TO PAD?. Filled pads hold a recording.</li>
         </ul>
       </details>
     </div>
@@ -289,8 +296,8 @@
       <h2>Mic · samples</h2>
       <div class="note">The board's INMP441 mic listens through the small hole marked <b>MIC</b> between the keys and the knobs.
         Here your computer's mic stands in for it (turned down 20 dB, about as sensitive as the INMP441).
-        Press <kbd>Shift</kbd>, hold <kbd>F</kbd> (REC), let go of Shift and keep holding: after 2 s it beeps, then records
-        onto the selected pad until you let go of F. In SAMPLE, holding a pad does the same onto that pad.
+        <kbd>Shift</kbd> + hold <kbd>F</kbd> (REC) 1 s opens SAMPLE; tap or hold any pad to record (a beep first),
+        trim it, then <kbd>Shift</kbd> + <kbd>F</kbd> and tap the pad to save it to.
         Use headphones if you turn the monitor on.</div>
       <div class="row"><button id="micBtn">Use mic</button><span class="stat" id="micState">mic off</span></div>
       <div class="row"><span class="stat" id="smpState"></span><button id="smpClear">Clear saved samples</button></div>
@@ -309,7 +316,7 @@
     </div>
     <div class="card">
       <h2>MIDI · USB + Bluetooth</h2>
-      <div class="note">MIDI goes out in <b>Controller</b> and <b>Layered</b> modes: synth on the MCH channel, drums on DCH (10) with
+      <div class="note">MIDI goes out in <b>Controller</b> and <b>Layered</b> modes: synth on the MCH channel, the sampler track on SCH (10) with
         General MIDI note numbers, clock + start/stop when running. In Controller mode the knobs send CC 70-73 (Shift: 74-77).
         Incoming notes play the Hugbox; with SYNC set to USB it follows incoming clock.</div>
       <div class="row"><button id="midiConnect">Connect real MIDI devices</button><span class="note" id="midiState">not connected (optional)</span></div>
@@ -335,7 +342,7 @@
         Knobs only take over a value once you turn them past it (the readout shows <i>TURN</i> until then).
         In SEQ, tap a pad to toggle a step; hold a step and turn a knob to set its velocity / pitch / gate / probability.
         Synth track: chords and the arpeggiator are on SOUND page 3 (Shift + SND until it shows CHORD/ARP), or on the PLAY view's shift knobs.
-        <b>Shift + hold F</b> (REC) 2 s: a beep, then the mic records onto the selected pad until you let go (SAMPLE view).</div>
+        <b>Shift + hold F</b> (REC) 1 s opens SAMPLE: tap or hold a pad to record, trim, Shift + F to save it to a pad.</div>
       <div class="note" id="bringNote">Pad n = C4 + n semitones (pad 0 = C4 top-left … pad 15 = D#5). Lowest held pad wins. Shift + pad = 1 kHz.</div>
       <div class="keys" id="keymap"></div>
     </div>

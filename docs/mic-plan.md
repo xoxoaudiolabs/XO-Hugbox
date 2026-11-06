@@ -99,23 +99,33 @@ is in copper; everything else only changes the plate.
 - Samples are global (a user kit), not per project; the project format is unchanged apart from the new settings.
 
 **UI (keeps the rules: holding Shift never changes the screen, knob pick-up):**
-- **Record from anywhere:** press Shift, hold REC, let go of Shift. At **2 s** a 150 ms 1 kHz beep plays; the take starts
-  100 ms after it (so the mic doesn't catch the beep) on the selected pad, in the SAMPLE view, and stops when REC is let
-  go. Letting go during the beep records nothing. A release before 2 s is still sequencer record (the map shows REC/SMP). Choosing DRUM/SYNTH from SAMPLE jumps to PLAY, like FX and SETTINGS.
-- **Record in SAMPLE:** **hold a pad** 0.25 s: the same beep, then the take; release stops, 20 s at most. The take is trimmed, plays back once, and the pad shows
-  `U01`–`U16` everywhere (PLAY, SEQ, SOUND, the pad grid). A tap selects a pad and plays it.
-- **Screens:** the recorder (free time, pad, state, input meter with the threshold mark, pad grid with recorded pads
-  filled) while nothing is selected or a pad is held, and while GAIN was turned in the last 1.5 s; otherwise the editor.
-- **Knobs:** 1 STRT, 2 END, 3 FDIN, 4 FDOU | Shift: GAIN, NORM, REV, SRC (USER/KIT: turn to KIT to revert the pad; back to USER undoes it while you are still in the view).
-  On SETTINGS, Shift: THRS (start threshold, OFF = start right after the beep; on, up to 300 ms before the sound is kept) and MON (mic monitor).
-- **Saving:** on leaving the view: the output mutes, "SAVING SAMPLES" shows, then the files are written.
+Designed for one hand: after the way in, no step needs two things held at once, and the pad you touch last is the
+pad you get.
+- **Open:** **Shift + REC held 1 s**, from any view (a quick tap is still sequencer record; the map shows REC/SMP).
+  SAMPLE opens on **READY**: free time, input meter with the threshold mark, the pad grid. Knobs: GAIN (0-40 dB),
+  THRS (start threshold: OFF = start right after the beep; on, up to 300 ms before the sound is kept), MON (mic
+  monitor), SRC (source: MIC, a kit sound, or a recording U01-U16).
+- **Record:** **any pad**. A 150 ms 1 kHz beep, then the take starts 100 ms later (so the mic doesn't catch the beep).
+  **Held:** it records while held. **Let go during the beep:** hands free until the next tap of any pad. 20 s at most.
+  The instrument is muted during the take.
+- **Trim:** the take is trimmed (the Studio's opening selection), plays once and opens in the editor. Knobs 1 STRT,
+  2 END, 3 FDIN, 4 FDOU | Shift: NORM, REV, -, SRC. Every change rebuilds the sound and plays it (a preview voice, not a
+  pad). A pad tap plays it again; a pad held 0.6 s records a new take (the old one is dropped).
+- **Save:** **Shift + REC** shows **SAVE TO PAD?** (pads only, no knobs). The pad tapped gets the sound, plays it and
+  shows `U01`-`U16` everywhere (PLAY, SEQ, SOUND, the pad grid); a pad that already has a recording asks for a second
+  tap. Shift goes back to trimming. After a save it is READY again.
+- **Edit, copy or revert a pad:** SRC to a recording or kit sound loads a copy into the editor (on READY the knob has
+  to be turned fully left first to pick up). Save it back, onto another pad (a copy), or, for a pad's own kit sound
+  saved untouched onto that pad, the pad's recording is removed (back to the kit).
+- **Leaving:** any Shift shortcut. Choosing SAMPLER/SYNTH jumps to PLAY, like FX and SETTINGS. A take that wasn't saved
+  is dropped; the output mutes, "SAVING SAMPLES" shows, then the files are written.
 - **Output while recording:** the instrument is muted during a take (so the speaker doesn't feed the mic); with MON on
   the mic is heard. On board v1 the speaker and jack share one stream, so use MON with headphones only.
 
 **Emulator:** the computer's mic through `getUserMedia` ("Use mic" in the Mic · samples card), turned down 20 dB to
 behave like the INMP441, fed to `micIn()` block by block like the board. Samples go in IndexedDB. The faceplate drawing
-marks the mic hole. `node sim/tools/sample_test.js` runs the whole flow headless (open, record a tone, trim, save,
-reload) and checks it.
+marks the mic hole. `node sim/tools/sample_test.js` runs the whole flow headless (open, record held and hands-free,
+trim, save to pads, leave, reload) and checks it.
 
 ## 5. Validate (with the v1.1 breadboard test, before the PCB order)
 

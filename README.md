@@ -16,8 +16,8 @@ Play it on its own, or use it as a USB/Bluetooth MIDI companion for XOXO Studio 
 
 ## What it does
 
-- **Drums:** 16 sample pads with pitch, decay, filter, level, pan and choke groups. A built-in kit is generated at boot.
-- **Sampling:** a built-in mic. Hold Shift + REC: a beep, then it records onto a pad until you let go; then trim, fade, normalise or reverse it in the same sample editor as XOXO Studio. Samples are kept on the flash.
+- **Sampler:** 16 sample pads with pitch, decay, filter, level, pan and choke groups. A built-in kit is generated at boot; your recordings can go on any pad.
+- **Sampling:** a built-in mic, one-handed. Shift + REC opens the sampler; tap or hold any pad to record (a beep counts you in), trim, fade, normalise or reverse it in the same sample editor as XOXO Studio, then tap the pad to save it to. Samples are kept on the flash.
 - **Synth:** 6 voices, two oscillators (saw, square, sine, noise), 2-operator FM, a resonant filter with its own envelope, ADSR, analog-style drift and glide.
 - **Chords and arpeggiator:** chords built from the scale (5th, triad, 7th, sus2, sus4, with inversions); the arp does up/down/up-down/random/as-played, 1/4 to 1/32 including triplets, 1–3 octaves, with latch.
 - **Sequencer:** 16 steps × 4 pages = 64 steps, swing, live recording, and per-step velocity, pitch, gate and probability.
@@ -47,9 +47,9 @@ display driver, so the screen and the sound match the hardware. See [`sim/README
 
 | Control | What it does |
 |---|---|
-| Pads | Play drums, or synth notes in a scale (bottom-left = lowest). In SEQ, toggle steps. |
+| Pads | Play the sampler's 16 sounds, or synth notes in a scale (bottom-left = lowest). In SEQ, toggle steps. |
 | Knobs | 4 parameters of the current page. Hold **Shift** for 4 more. Knobs "pick up" a value only once turned past it. |
-| Shift + pad | Top row: PLAY · SEQ · SOUND · FX. Row 2: seq page 1–4. Row 3: DRUM · SYNTH · run/stop · rec. Bottom row: Standalone · Controller · Layered · Settings. |
+| Shift + pad | Top row: PLAY · SEQ · SOUND · FX. Row 2: seq page 1–4. Row 3: SAMPLER · SYNTH · run/stop · rec (hold 1 s: record a sample). Bottom row: Standalone · Controller · Layered · Settings. |
 | Double-tap Shift | Shows the shortcut map; tap a pad to jump there. |
 | Hold a step + knob | Set that step's velocity, pitch, gate or probability. |
 | SETTINGS pads | Tap S1–S8 to load, hold to save · copy/paste/clear page · mutes · tap tempo · MIDI panic. |

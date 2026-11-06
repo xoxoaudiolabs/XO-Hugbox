@@ -66,7 +66,7 @@
   // mic: the 1.5 mm sound hole over the INMP441, which sits label (port) side up in a pocket under the plate.
   // The ring and the MIC note are the emulator's (like the other grey notes); the printed plate only has the hole.
   const micG = el('g', {});
-  el('title', {}, micG).textContent = 'INMP441 mic: sound hole. Shift + hold REC opens SAMPLE.';
+  el('title', {}, micG).textContent = 'INMP441 mic: sound hole. Shift + hold REC 1 s opens SAMPLE.';
   el('circle', { cx: L.MIC_C[0], cy: Y(L.MIC_C[1]), r: 2.2, fill: 'none', stroke: '#c9c2b2', 'stroke-width': 0.3, 'stroke-dasharray': '0.6 0.5' }, micG);
   el('circle', { cx: L.MIC_C[0], cy: Y(L.MIC_C[1]), r: L.MIC_HOLE / 2, fill: '#2b2b2b' }, micG);
   el('text', { x: L.MIC_C[0], y: Y(L.MIC_C[1]) + 4.8, 'font-size': 2.2, fill: '#7d7a72', 'text-anchor': 'middle' }, micG).textContent = 'MIC';
@@ -142,7 +142,7 @@
   const fw = () => +$('fwSel').value;
   // shift legends, as they would be printed on the keycap fronts
   const SHIFT_LEGEND = ['PLAY', 'SEQ', 'SOUND', 'FX', 'PG 1', 'PG 2', 'PG 3', 'PG 4',
-                        'DRUM', 'SYNTH', 'RUN', 'REC/SMP', 'STD', 'CTL', 'LAYER', 'SET'];
+                        'SMPL', 'SYNTH', 'RUN', 'REC/SMP', 'STD', 'CTL', 'LAYER', 'SET'];
   function setLegends() {
     const main = fw() === 0;
     keyEls.forEach((k) => {
@@ -319,7 +319,7 @@
   let micOn = false, micStream = null, micSrc = null;
   function micText() {
     const st = core && hw.power && fw() === 0 ? core._hb_mic_state() : 0;
-    const what = ['', 'SAMPLE view open', 'waiting for sound', '● recording'][st];
+    const what = ['', 'SAMPLE view open', 'waiting for sound (THRS)', '● recording'][st];
     $('micState').textContent = (micOn ? 'mic on' : 'mic off: takes record silence') + (what ? ' · ' + what : '');
   }
   $('micBtn').addEventListener('click', async () => {
@@ -339,7 +339,7 @@
     micSrc.connect(sp);
     micOn = true;
     $('micBtn').textContent = 'Stop mic';
-    log('[emulator] mic on: Shift + hold F (REC) 2 s: beep, then it records until you let go\n');
+    log('[emulator] mic on: Shift + hold F (REC) 1 s opens SAMPLE; then tap or hold any pad to record\n');
   });
 
   // ---------------- projects (localStorage) ----------------
@@ -384,7 +384,7 @@
       rows.push([slot, s(core._hb_param_label(id)), s(core._hb_param_name(id)), s(core._hb_param_text(id))]);
     }
     const view = core._hb_view(), track = core._hb_track();
-    const label = `${VIEW_NAMES[view] || ''} · ${track === 0 ? 'drum' : 'synth'}`;
+    const label = `${VIEW_NAMES[view] || ''} · ${track === 0 ? 'sampler' : 'synth'}`;
     const key = label + JSON.stringify(rows);
     if (key === guideKey) return;
     guideKey = key;

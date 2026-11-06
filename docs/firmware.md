@@ -55,20 +55,21 @@ same time. If an upload can't find the port, hold **BOOT** while plugging the bo
 
 ### Controls
 
-- **Views:** PLAY, SEQ, SOUND, FX, SETTINGS, SAMPLE. **Tracks:** DRUM, SYNTH. **Modes:** Standalone, Controller (MIDI only), Layered.
-- **Shift + pad:** top row PLAY · SEQ · SOUND (again = next page) · FX; row 2 sequencer pages 1-4; row 3 DRUM · SYNTH ·
-  run/stop · record (held 2 s: beep, then a sample take); bottom row Standalone · Controller · Layered · SETTINGS. Holding Shift flips the knobs to their
+- **Views:** PLAY, SEQ, SOUND, FX, SETTINGS, SAMPLE. **Tracks:** SAMPLER (shown as SMPL; the 16 pads: the kit or your recordings), SYNTH. **Modes:** Standalone, Controller (MIDI only), Layered.
+- **Shift + pad:** top row PLAY · SEQ · SOUND (again = next page) · FX; row 2 sequencer pages 1-4; row 3 SAMPLER · SYNTH ·
+  run/stop · record (held 1 s: SAMPLE); bottom row Standalone · Controller · Layered · SETTINGS. Holding Shift flips the knobs to their
   second four without changing the screen; double-tapping Shift shows the shortcut map.
 - **Knob pick-up:** a value only follows the knob once the knob passes it, so values never jump when pages change.
 - **Sequencer:** 64 steps (4 pages × 16), swing, pattern length, live recording, per-step velocity/pitch/gate/probability.
 - **Chords and arp** (synth): chords built from the scale with inversions; arp up/down/up-down/random/as-played,
   1/4-1/32 with triplets, 1-3 octaves, gate, latch, locked to the sequencer grid.
-- **SETTINGS pads:** S1-S8 (tap = load, hold = save), copy/paste/clear page, clear track (hold), mute drums/synth,
-  tap tempo, MIDI panic. Knobs: synth MIDI channel, drum MIDI channel, clock source, Bluetooth; Shift: brightness,
-  mic start threshold, mic monitor.
-- **SAMPLE:** Shift + REC held 2 s (Shift can be let go) beeps, then records the mic onto the selected pad until REC is
-  let go (up to 20 s). In SAMPLE a pad held 0.25 s does the same onto that pad; a tap selects and plays. The take is trimmed to the
-  sound and opens in the sample editor: START, END, fade in, fade out | Shift: gain, normalise, reverse, USER/KIT.
+- **SETTINGS pads:** S1-S8 (tap = load, hold = save), copy/paste/clear page, clear track (hold), mute sampler/synth,
+  tap tempo, MIDI panic. Knobs: synth MIDI channel, sampler MIDI channel, clock source, Bluetooth; Shift: brightness.
+- **SAMPLE** (Shift + REC held 1 s), one-handed: **READY** (knobs GAIN, THRS, MON, SOURCE): any pad records after a
+  beep, held = while held, tapped = until the next tap (20 s at most). The take is trimmed and opens in the **editor**
+  (START, END, fade in, fade out | Shift: normalise, reverse, -, SOURCE); every change plays it, a pad tap plays it, a
+  pad held 0.6 s records a new take. **Shift + REC: SAVE TO PAD?**, tap the pad (a recorded pad needs a second tap).
+  SOURCE loads a kit sound or a recording into the editor (to trim it, copy it, or put a kit sound back).
   Recorded pads show as U01-U16. Saved to flash on leaving the view.
 
 ### Projects
@@ -87,10 +88,10 @@ saves when you leave SAMPLE, with the output muted.
 
 ### MIDI
 
-- **Out** (Controller and Layered modes): synth notes on the synth channel, drums on the drum channel (default 10) with
+- **Out** (Controller and Layered modes): synth notes on the synth channel, the sampler track on the sampler channel (default 10, General MIDI drum notes) with
   General MIDI note numbers, sequencer and arp notes with timed note-offs, clock (24 ppqn) and start/stop when the
   clock source is internal. In Controller mode the knobs send CC 70-73, or 74-77 with Shift.
-- **In:** notes on the synth or drum channel play the engine. With the clock source set to USB or BLE it follows
+- **In:** notes on the synth or sampler channel play the engine. With the clock source set to USB or BLE it follows
   incoming clock (6 clocks per step), start and stop, and estimates the tempo.
 - **Transports:** USB (TinyUSB MIDI) and Bluetooth LE MIDI (the standard BLE-MIDI service on NimBLE-Arduino,
   advertised as "XO-Hugbox"), both at once.

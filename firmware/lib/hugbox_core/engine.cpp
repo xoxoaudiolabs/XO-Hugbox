@@ -171,6 +171,22 @@ void Sampler::trigger(int pad, int vel, const Model &m, int semis) {
 
 void Sampler::stopAll() { for (auto &v : v_) v.on = false; }
 
+void Sampler::preview(int i) {
+  const Sample &src = u_[i];
+  Voice &v = v_[16];
+  if (!src.data || src.len < 2) { v.on = false; return; }
+  v.on = true;
+  v.data = src.data;
+  v.len = src.len;
+  v.pos = 0;
+  v.rate = 1.0f;
+  v.gain = 1.0f;
+  v.env = 1.0f;
+  v.envK = 1.0f;
+  v.filtered = false;
+  v.gl = v.gr = 0.7071f;
+}
+
 const int16_t *Sampler::setUser(int i, const int16_t *data, uint32_t len) {
   const int16_t *old = u_[i].data;
   if (old)
