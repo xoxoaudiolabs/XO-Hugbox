@@ -126,7 +126,8 @@
       fill: shift ? 'url(#capS)' : 'url(#capG)', stroke: shift ? '#a04b13' : '#bcb6a6', 'stroke-width': 0.3 }, g);
     const top = el('rect', { x: x - 6.6, y: Y(y) - 7.4, width: 13.2, height: 13.2, rx: 1.4,
       fill: shift ? '#f0874a' : '#f7f5ef', opacity: 0.85 }, g);
-    const labEl = el('text', { x: x - 5.4, y: Y(y) - 3.8, 'font-size': 2.6, fill: shift ? '#3a1b05' : '#8b8577', 'font-family': 'monospace' }, g);
+    const labEl = el('text', { x: x - 5.4, y: Y(y) - 3.8, 'font-size': 2.6, fill: shift ? '#3a1b05' : '#8b8577', 'font-family': 'monospace',
+                                class: 'kbdlabel' }, g);   // the computer key for it (hidden on phones)
     labEl.textContent = label;
     const subEl = el('text', { x: x + 5.6, y: Y(y) + 4.6, 'font-size': 2.4, fill: shift ? '#3a1b05' : '#b0a998', 'text-anchor': 'end' }, g);
     subEl.textContent = sub;
@@ -160,6 +161,22 @@
     $('bringNote').style.display = main ? 'none' : '';
   }
 
+  // ---------------- phones: just the Hugbox, full screen ----------------
+  const phoneMq = matchMedia('(max-width: 640px), (pointer: coarse) and (max-width: 940px)');
+  const isPhone = () => document.body.classList.contains('phone');
+  const setPhone = () => {
+    document.body.classList.toggle('phone', phoneMq.matches);
+    $('startBtn').textContent = phoneMq.matches ? 'Play' : 'Power on';
+  };
+  setPhone();
+  phoneMq.addEventListener('change', setPhone);
+  $('moreBtn').addEventListener('click', () => {
+    const on = document.body.classList.toggle('showall');
+    $('moreBtn').textContent = on ? 'Just the Hugbox' : 'Emulator panels';
+    if (on) $('side').scrollIntoView({ behavior: 'smooth' }); else window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  const buzz = () => { if (isPhone() && navigator.vibrate) navigator.vibrate(8); };   // a key click you can feel (Android)
+
   // ---------------- input handling ----------------
   const pointerPad = new Map();   // pointerId -> pad index (or 'shift')
   const setPointer = (id, what) => {
@@ -173,9 +190,9 @@
     paintKeys();
   };
   keyEls.forEach((k) => {
-    k.g.addEventListener('pointerdown', (e) => { e.preventDefault(); k.g.setPointerCapture(e.pointerId); setPointer(e.pointerId, k.n); });
+    k.g.addEventListener('pointerdown', (e) => { e.preventDefault(); k.g.setPointerCapture(e.pointerId); setPointer(e.pointerId, k.n); buzz(); });
   });
-  shiftEl.g.addEventListener('pointerdown', (e) => { e.preventDefault(); shiftEl.g.setPointerCapture(e.pointerId); setPointer(e.pointerId, 'shift'); });
+  shiftEl.g.addEventListener('pointerdown', (e) => { e.preventDefault(); shiftEl.g.setPointerCapture(e.pointerId); setPointer(e.pointerId, 'shift'); buzz(); });
   const release = (e) => { if (pointerPad.delete(e.pointerId)) recomputePointer(); };
   svg.addEventListener('pointerup', release);
   svg.addEventListener('pointercancel', release);
@@ -316,10 +333,12 @@
   // -20 dB first: a laptop mic after the browser is much hotter than the INMP441 (-26 dBFS at 94 dB SPL), so the
   // Hugbox's GAIN knob behaves about the same here as on the board.
   const MIC_SCALE = 0.1;
-  let micOn = false, micStream = null, micSrc = null;
+  let micOn = false, micStream = null, micSrc = null, micAsked = false;
   function micText() {
     const st = core && hw.power && fw() === 0 ? core._hb_mic_state() : 0;
     const what = ['', 'SAMPLE view open', 'waiting for sound (THRS)', '● recording'][st];
+    // on a phone there is no panel to find the mic button in: SAMPLE turns the phone's mic on (asked once)
+    if (st && isPhone() && !micOn && !micAsked) { micAsked = true; $('micBtn').click(); }
     $('micState').textContent = (micOn ? 'mic on' : 'mic off: takes record silence') + (what ? ' · ' + what : '');
   }
   $('micBtn').addEventListener('click', async () => {

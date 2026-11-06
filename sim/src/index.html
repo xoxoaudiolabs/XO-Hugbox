@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0b">
 <title>XO-Hugbox Emulator</title>
 <style>
   /* XOXO Audio Labs look (tokens from the xoxoaudiolabs website): black, off-white, grey rules, signal red used sparingly,
@@ -97,6 +98,20 @@
   .knobmap td:first-child { color: var(--grey); white-space: nowrap; width: 1%; text-transform: uppercase; letter-spacing: .06em; font-size: 10.5px; padding-top: 7px; }
   .knobmap .v { text-align: right; white-space: nowrap; font-weight: 600; }
   .knobmap tr.shiftrow td:first-child { color: var(--signal); }
+  /* Phones: just the Hugbox, filling the screen, to play with. "Emulator panels" shows the rest underneath. */
+  .mbar { display: none; }
+  body.phone .kbdlabel { display: none; }
+  body.phone { overscroll-behavior: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent; }
+  body.phone:not(.showall) { overflow: hidden; }
+  body.phone .app { display: block; padding: 0; height: auto; }
+  body.phone .hint, body.phone:not(.showall) .side { display: none; }
+  body.phone .device-wrap { height: 100vh; height: 100svh; justify-content: center;
+    padding: max(6px, env(safe-area-inset-top)) 6px max(6px, env(safe-area-inset-bottom)); }
+  body.phone #device { height: 100%; width: 100%; max-width: none; max-height: none; min-height: 0; }
+  body.phone.showall .side { padding: 16px 16px 72px; overflow: visible; }
+  body.phone .mbar { display: block; position: fixed; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 40; }
+  .mbar button { font-size: .62rem; padding: .45em .8em; border: 1px solid #3a3a38; color: var(--grey); background: rgba(11,11,11,.7); }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -109,7 +124,7 @@
     <svg id="device" xmlns="http://www.w3.org/2000/svg" aria-label="XO-Hugbox top view"></svg>
     <div class="hint">Click/hold pads or use the keyboard · Shift = shift key · drag or scroll a knob · click the power slider</div>
   </div>
-  <div class="side">
+  <div class="side" id="side">
     <div class="card masthead">
       <div class="kicker">XOXO Audio Labs · Emulator</div>
       <h1>XO-Hugbox</h1>
@@ -348,6 +363,7 @@
     </div>
   </div>
 </div>
+<div class="mbar"><button id="moreBtn">Emulator panels</button></div>
 <script src="layout.js"></script>
 <script src="hugbox_core.js"></script>
 <script src="emulator.js"></script>
