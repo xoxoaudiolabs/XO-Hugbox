@@ -3223,7 +3223,7 @@
   (gr_text "jack -> right wall" (at 109.25 52.099999) (layer "B.SilkS") (tstamp 040f9173-5110-46f7-8643-8edbf93c1581)
     (effects (font (size 0.8 0.8) (thickness 0.15)) (justify mirror))
   )
-  (gr_text "XO-HUGBOX v1" (at 76 193.1) (layer "B.SilkS") (tstamp 04cccf89-9168-43f5-85eb-876f1822b629)
+  (gr_text "XO-HUGBOX v1.0" (at 76 193.1) (layer "B.SilkS") (tstamp 04cccf89-9168-43f5-85eb-876f1822b629)
     (effects (font (size 1.2 1.2) (thickness 0.15)) (justify mirror))
   )
   (gr_text "D1" (at 37.42 95.68) (layer "B.SilkS") (tstamp 10a643b6-7c35-427a-b729-d9b546de4290)

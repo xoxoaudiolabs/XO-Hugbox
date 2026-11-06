@@ -7,7 +7,7 @@ Read first: [README.md](README.md), [docs/hardware.md](docs/hardware.md), [docs/
 
 ## Status
 
-- Hardware design complete, nothing built yet. Board v1 gerbers are the order candidate; v1.1 (separate speaker data
+- Hardware design complete, nothing built yet. Board v1.0 gerbers (silkscreen "XO-HUGBOX v1.0") are the ones being ordered; v1.1 (separate speaker data
   line) waits on the breadboard test in [docs/speaker-path-plan.md](docs/speaker-path-plan.md).
 - Firmware stages done in code: UI, synth + sampler, projects/sequencer extras, FX, USB + BLE MIDI. None run on hardware.
 - Both boards carry a 2×3 J_MIC footprint for the INMP441 (label side up on its header, under the plate's sound hole)

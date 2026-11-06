@@ -175,7 +175,7 @@ for k in range(48):
 text("MIC label up",mcx,mcy,0.7,back=False)
 custom("J_MTDI",[("",L.MTDI_PAD[0],L.MTDI_PAD[1],"MIC_SD")],size=1.6,labels=False)
 text("MTDI",L.MTDI_PAD[0]-0.7,L.MTDI_PAD[1]-2.5,0.8)
-text("XO-HUGBOX v1.1" if V11 else "XO-HUGBOX v1",46,4.4,1.2)
+text("XO-HUGBOX v1.1" if V11 else "XO-HUGBOX v1.0",46,4.4,1.2)
 board.BuildConnectivity()
 pcbnew.SaveBoard(f"xo_hugbox{SUF}_placed.kicad_pcb",board)
 pcbnew.ExportSpecctraDSN(board, f"xo_hugbox{SUF}.dsn")

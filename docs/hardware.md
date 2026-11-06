@@ -50,11 +50,11 @@ These dimensions are estimates in `hardware/layout.py`. Measure your actual part
 
 ## Ordering the PCB
 
-- **v1:** [`hardware/pcb/xo_hugbox_gerbers.zip`](../hardware/pcb/xo_hugbox_gerbers.zip). 2 layers, 1.6 mm, HASL lead-free.
+- **v1.0** (the board being ordered, silkscreen "XO-HUGBOX v1.0"): [`hardware/pcb/xo_hugbox_gerbers.zip`](../hardware/pcb/xo_hugbox_gerbers.zip). 2 layers, 1.6 mm, HASL lead-free.
   **The oval pot-pin slots must stay plated:** say so in the order notes.
 - **v1.1:** [`hardware/pcb/xo_hugbox_v11_gerbers.zip`](../hardware/pcb/xo_hugbox_v11_gerbers.zip). Same parts and outline; gives the
   speaker amp its own I2S data line so the speaker can be filtered separately. Pending a breadboard test; see
-  [speaker-path-plan.md](speaker-path-plan.md). Until that passes, v1 is the safe choice.
+  [speaker-path-plan.md](speaker-path-plan.md). Until that passes, v1.0 is the safe choice.
 
 The board has **no reverse-polarity protection** on the battery input: check the LiPo's polarity with a meter.
 
