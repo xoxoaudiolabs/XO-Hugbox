@@ -16,7 +16,8 @@ Read first: [README.md](README.md), [docs/hardware.md](docs/hardware.md), [docs/
   The firmware uses a custom partition table (first flash erases LittleFS once).
 - Next: measure the mic module's pin-row spacing (it is in copper), bring-up on real parts (check the "audio load"
   serial line first), then the v1.1 + mic breadboard test.
-- Emulator check: `node sim/tools/sample_test.js` (after `sim/build_wasm.sh`).
+- Emulator checks (after `sim/build_wasm.sh`): `node sim/tools/feature_test.js` (every feature),
+  `node sim/tools/sample_test.js` (mic sampling), `node sim/tools/level_test.js` (output levels and limiter).
 
 ## Rules of the road
 

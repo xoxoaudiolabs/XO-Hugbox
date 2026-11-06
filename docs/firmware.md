@@ -48,7 +48,7 @@ same time. If an upload can't find the port, hold **BOOT** while plugging the bo
 | `model.*` | Parameter table, knob pages, scales, chord builder, steps, project file format. |
 | `engine.*`, `dsp.h` | 6-voice synth (PolyBLEP saw/square, sine, noise, 2-op FM, TPT state-variable filter with envelope and keytracking, ADSR, drift, glide) and the 16-pad sample player (pitch, decay, filter, level, pan, choke groups). |
 | `kit.cpp` | Built-in drum kit: 16 one-shots synthesized into PSRAM at boot (~0.8 MB). |
-| `fx.*` | Drive, bitcrush, sample-rate reduction, tempo-synced ping-pong delay, low cut, then a tanh limiter. |
+| `fx.*` | Drive, bitcrush, sample-rate reduction, tempo-synced ping-pong delay, low cut. The output limiter (`dsp::limit`, in `main_app.cpp`) is linear up to -6 dBFS and only rounds off peaks above it. |
 | `io.cpp` | Projects (autosave + 8 slots, SETTINGS pad grid) and MIDI (notes, knob CCs, clock in/out). |
 | `mic.cpp` | Mic sampling: the recorder (audio core), the sample editor (a port of XOXO Studio's), user samples on flash, the SAMPLE view. See [mic-plan.md](mic-plan.md). |
 | `bringup_app.*` | The bring-up test as an app, for the emulator. |

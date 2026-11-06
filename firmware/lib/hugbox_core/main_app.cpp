@@ -326,7 +326,13 @@ void MainApp::pollKnobs(uint32_t now) {
   for (int k = 0; k < 4; k++) {
     const uint8_t id = pg.slot[k + (shift_ ? 4 : 0)];
     const uint32_t key = (uint32_t)id | (uint32_t)m_.value[P_SPAD] << 8 | (uint32_t)(heldStep_ + 1) << 16;
-    if (key != knobKey_[k]) { knobKey_[k] = key; latched_[k] = false; prevTarget_[k] = -1; }
+    // where the knob points on a new page/parameter is the start of its sweep, so a knob that already sits on the value
+    // (or crosses it on its first move) picks it up; targets can be negative, so "no start yet" is NO_TARGET
+    if (key != knobKey_[k]) {
+      knobKey_[k] = key;
+      latched_[k] = false;
+      prevTarget_[k] = id == P_NONE ? NO_TARGET : knobTarget(id, accepted_[k]);
+    }
     if (abs((int)pot_[k] - (int)accepted_[k]) <= 24) continue;   // ADC noise
     accepted_[k] = pot_[k];
     if (mode_ == M_CTL && view_ != V_SET && view_ != V_SMP) { if (shift_) shiftUsed_ = true; knobCC(k, now); continue; }
@@ -334,11 +340,12 @@ void MainApp::pollKnobs(uint32_t now) {
     if (shift_) shiftUsed_ = true;
     const ParamDef &d = PARAMS[id];
     const int range = d.max - d.min;
-    const int target = d.min + (int)((pot_[k] * (float)range) / 4095.0f + 0.5f);
+    const int target = knobTarget(id, pot_[k]);
     const int cur = getVal(id);
     if (!latched_[k]) {
       const int pt = prevTarget_[k];
-      if (range <= 16 || target == cur || (pt >= 0 && ((pt <= cur && target >= cur) || (pt >= cur && target <= cur))))
+      if (range <= 16 || target == cur ||
+          (pt != NO_TARGET && ((pt <= cur && target >= cur) || (pt >= cur && target <= cur))))
         latched_[k] = true;
     }
     prevTarget_[k] = target;
@@ -869,9 +876,9 @@ void MainApp::render(int16_t *buf, int frames) {
   const bool mon = monValid_, off = muteOut_;
   if (beepReq_) { beepReq_ = false; beepPos_ = 0; }
   for (int n = 0; n < frames; n++) {
-    // tanh-shaped limiter: linear for normal levels, rounds off only when several voices pile up
-    float l = dsp::tanhish(L[n] * mvol);
-    float r = dsp::tanhish(R[n] * mvol);
+    // limiter: linear up to -6 dBFS, rounds off only the peaks when several voices pile up
+    float l = dsp::limit(L[n] * mvol);
+    float r = dsp::limit(R[n] * mvol);
     if (mute) l = r = 0;
     if (mon) { l += mon_[n] * 0.7f; r += mon_[n] * 0.7f; }   // monitor: use headphones, or it feeds back
     if (beepPos_ >= 0) {                          // the count-in beep: 1 kHz with 5 ms ramps, over everything
@@ -883,6 +890,8 @@ void MainApp::render(int16_t *buf, int frames) {
       if (beepPos_ >= len) beepPos_ = -1;
     }
     if (off) l = r = 0;
+    if (l > 1.0f) l = 1.0f; else if (l < -1.0f) l = -1.0f;   // monitor + beep ride on top: never wrap the int16
+    if (r > 1.0f) r = 1.0f; else if (r < -1.0f) r = -1.0f;
     buf[2 * n] = (int16_t)(l * 32000.0f);
     buf[2 * n + 1] = (int16_t)(r * 32000.0f);
   }

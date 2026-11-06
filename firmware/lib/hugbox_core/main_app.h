@@ -247,7 +247,12 @@ class MainApp : public App {
   uint16_t pot_[4] = {}, accepted_[4] = {};
   uint32_t knobKey_[4] = {};
   bool latched_[4] = {};
-  int prevTarget_[4] = {-1, -1, -1, -1};
+  static constexpr int NO_TARGET = -32768;          // below any parameter's minimum
+  int prevTarget_[4] = {NO_TARGET, NO_TARGET, NO_TARGET, NO_TARGET};
+  static int knobTarget(uint8_t id, int pot) {
+    const ParamDef &d = PARAMS[id];
+    return d.min + (int)((pot * (float)(d.max - d.min)) / 4095.0f + 0.5f);
+  }
   int touchKnob_ = -1;         // knob shown in the readout
   uint32_t touchMs_ = 0;
   bool potsInit_ = false;

@@ -87,7 +87,7 @@ void Synth::render(float *out, int n, const Model &m) {
   const float dcyK = expf(-4.6f / (msFrom(m.value[P_DCY]) * 0.001f * FS));
   const float relK = expf(-4.6f / (msFrom(m.value[P_REL]) * 0.001f * FS));
   const float sus = m.value[P_SUS] / 100.0f;
-  const float vol = m.value[P_SVOL] / 100.0f * 0.32f;
+  const float vol = m.value[P_SVOL] / 100.0f * 0.2f;   // 6 voices at high resonance stay below the limiter
 
   for (auto &v : v_) {
     if (!v.on) continue;

@@ -50,6 +50,14 @@ inline float tanhish(float x) {
   const float x2 = x * x;
   return x * (27.0f + x2) / (27.0f + 9.0f * x2);
 }
+// Output limiter: exactly linear up to `knee` (-6 dBFS), then a tanh-shaped shoulder that meets full scale at 2.
+// Unity slope at the knee, so normal levels pass untouched and only peaks are rounded off.
+inline float limit(float x, float knee = 0.5f) {
+  const float a = fabsf(x);
+  if (a <= knee) return x;
+  const float y = knee + (1.0f - knee) * tanhish((a - knee) / (1.0f - knee));
+  return x < 0 ? -y : y;
+}
 
 // Topology-preserving state-variable filter (Zavalishin). Set coefficients at control rate.
 struct Svf {
