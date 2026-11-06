@@ -39,7 +39,7 @@ window.HUGBOX_GUIDE = (() => {
     ['MX switch', 17, '16 pads + shift'],
     ['1u MX keycap', 17, '16 + one for shift (orange in the render)'],
     ['1N4148 diode', 16, 'one per pad'],
-    ['INMP441 I2S mic module', 1, 'round breakout; records samples (see docs/mic-plan.md)'],
+    ['INMP441 I2S mic module', 1, 'round breakout, 2×3 pins + its header strip; records samples (see docs/mic-plan.md)'],
     ['100 kΩ resistor', 2, 'battery divider R1, R2'],
     ['12D00G-5mm slide switch', 1, 'power'],
     ['3 W 8 Ω box speaker 28.2×31×15.3 mm', 1, 'with two screw ears'],
@@ -148,9 +148,13 @@ window.HUGBOX_GUIDE = (() => {
           (the firmware's <code>U8G2_R2</code> turns the picture back). Board pads read SDA SCL VCC GND left to right.
           It must end up <b>0.8 mm above the board</b> - the plate pocket sets that height in the next step.</li>
           <li><b>12D00G power switch</b>: three pins in, actuator up.</li>
-          <li><b>INMP441 mic</b>: solder six short wires (~15 mm) to its pads, then set the module <b>port up</b> in the plate's
-          mic pocket (under the small hole between the keys and the knobs), with a ring of thin foam tape around the port.
-          The wires drop into <b>J_MIC</b>: SD, SCK, WS, LR, 3V3, GND, as printed on the board.</li>
+          <li><b>INMP441 mic</b>: it listens through the small hole in the <b>middle of its label side</b> (the mic can is on the
+          other side), so it goes in <b>label side up</b>. On the bench, cut its header strip into two 3-pin pieces, push the
+          <b>short</b> ends up through the module from the can side (plastic on the can side), solder them on the label side and
+          clip them <b>flush</b>, keeping the joints low. Stick a small ring of thin foam tape around the port hole.
+          Then set the long ends into <b>J_MIC</b>: <b>SCK WS L/R toward the knobs, SD VDD GND toward the keys</b>, matching the
+          board labels (it only fits one way round). The header plastic sits on the board and sets the height; the plate's
+          mic pocket closes over it.</li>
         </ol>`,
     },
     {
@@ -160,7 +164,7 @@ window.HUGBOX_GUIDE = (() => {
           <li>Put a <b>1 mm spacer</b> on each of the five screw holes.</li>
           <li>Lower plate + switches onto the board: every switch's pins through, pot shafts up through their holes,
           OLED glass into its window, slide actuator in its slot. Thread the pot nuts on loosely to hold the stack.</li>
-          <li>Flip it and solder: <b>17 switches</b>, then the <b>pot legs</b> (clip them flush afterwards), the <b>OLED</b> (check it is level and 0.8 mm up), the <b>power switch</b> and the six <b>mic wires</b> in J_MIC.</li>
+          <li>Flip it and solder: <b>17 switches</b>, then the <b>pot legs</b> (clip them flush afterwards), the <b>OLED</b> (check it is level and 0.8 mm up), the <b>power switch</b> and the six <b>mic pins</b> in J_MIC (clip them).</li>
         </ol>
         <div class="callout tip">Press each switch while it cools so it sits flat in the plate.</div>`,
     },

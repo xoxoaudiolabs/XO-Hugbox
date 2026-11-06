@@ -64,10 +64,16 @@ POT_CAN_D = 16.27               # can diameter (measured)
 POT_LUG_Z = 5.28                # PCB top -> underside of the lugs (measured)
 POT_LUG_L = 4.38                # lug reach past the can (measured)
 POT_LUG_T = 0.5                 # lug thickness (assumed)
-# INMP441 I2S mic (docs/mic-plan.md): module in a plate pocket between the keys and the pot strip, port facing up.
-MIC_C = (52.0, 94.0)            # module centre (pocket + sound hole)
-MIC_ROW_Y = 87.0                # J_MIC wire holes on the board, just under the pocket edge toward the keys
-MIC_D = 14.5                   # module diameter (typical listing value - measure!)
-MIC_T = 2.4                    # module board + mic can, no header (measure!)
-MIC_HOLE = 1.5                 # sound hole through the plate, over the module's port (assumed centred - measure!)
+# INMP441 I2S mic (docs/mic-plan.md). The round breakout (~13.9 mm, two notches) has 2 rows of 3 pins:
+# SCK WS L/R and SD VDD GND, 2.54 mm pitch, rows 7.62 mm apart, and the bottom-port mic's sound port in the centre of
+# the LABEL side (the can is on the other side). So it sits label side up, straight above J_MIC on its own header:
+# can facing the board, the header's 2.5 mm plastic spacer between the boards, label face up in a plate pocket.
+MIC_C = (52.0, 94.0)            # module centre = sound port = sound hole
+MIC_PITCH = 2.54                # pin pitch along a row (x)
+MIC_ROW_DY = 3.81               # each pin row sits this far from the centre (rows 7.62 apart; photo, measure!)
+MIC_D = 13.9                    # module diameter (photo scaled by the 2.54 pitch; listings say 14 - measure!)
+MIC_PCB_T = 1.0                 # module board thickness (measure!)
+MIC_SPACER = 2.5                # header plastic between the module and the main board (standard 2.54 header)
+MIC_POCKET = MIC_SPACER + MIC_PCB_T - (Z_PLATE_BOT - Z_PCB - PCB_T) + 0.5   # 3.0: label face + 0.5 for solder/foam
+MIC_HOLE = 1.5                  # sound hole through the plate roof, over the port
 MTDI_PAD = (11.5, 80.5)         # J_MTDI landing pad for the wire from the XIAO's MTDI pad (GPIO41)

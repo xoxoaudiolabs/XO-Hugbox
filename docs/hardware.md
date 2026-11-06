@@ -20,14 +20,14 @@ all generated from it.
 | 17 | MX switches + 17 1u keycaps | 16 pads + shift. |
 | 16 | 1N4148 diodes | One per pad. |
 | 2 | 100 kΩ resistors | Battery voltage divider (R1, R2). |
-| 1 | **INMP441** I2S MEMS mic module (round, 6 pins) | Port up in the plate pocket, six short wires to J_MIC; its data comes from the XIAO's MTDI pad (GPIO41) via J_MTDI. See [mic-plan.md](mic-plan.md). |
+| 1 | **INMP441** I2S MEMS mic module (round ~14 mm, 2×3 pins, comes with a header strip) | Label (port) side up on its header straight into J_MIC, in the plate pocket under the sound hole; its data comes from the XIAO's MTDI pad (GPIO41) via J_MTDI. See [mic-plan.md](mic-plan.md). |
 | 1 | 3 W 8 Ω box speaker, 28.2×31×15.3 mm | Screwed to two shell posts (M2.5 self-tapping), face against the plate grille. |
 | 1 | LP102540 1100 mAh LiPo with protection board | In the shell cradle under the keys. |
 | 1 | 12D00G-5mm slide switch | Power; actuator through the plate. |
 | 4 | M3×12 countersunk screws | Corners. The fifth hole (knob strip) is a support post only: no screw, solid plate above. |
 | 5 | 1 mm spacers | Between PCB and plate. |
 | 2 | M2.5×6 self-tapping screws | Speaker. |
-| - | Thin hook-up wire | PCF I2C jumpers, XIAO battery leads, MTDI lead, mic wires. |
+| - | Thin hook-up wire | PCF I2C jumpers, XIAO battery leads, MTDI lead. |
 
 Target: under $50 in parts per unit.
 
@@ -43,6 +43,10 @@ These dimensions are estimates in `hardware/layout.py`. Measure your actual part
    module's own header distance (~2.1 mm, from a photo) only affects the printed plate, which clears both.
 3. PCM5102A module 33 × 17.5 mm, jack barrel 4.7 mm from its end (`PCM_LEN`, `PCM_W`, `JACK_FROM_END`).
 4. Speaker ear-hole spacing ~37 mm, ears about halfway down the 15.3 mm body (`SPK_EAR_PITCH`, `SPK_EAR_DROP`). Shell only.
+5. INMP441 mic: **the pin-row spacing goes into the PCB**. The footprint (J_MIC) uses 2 rows of 3 at 2.54 mm pitch, rows
+   **7.62 mm** apart centre to centre (read off the listing photo against the 2.54 pitch). To measure: the left edge of
+   a hole in one row to the left edge of the hole straight across in the other row. Also check the diameter (13.9 used, listings say 14) and
+   the board thickness (1.0 used); those two only change the printed plate (`MIC_*`).
 
 ## Ordering the PCB
 

@@ -2,7 +2,7 @@
 
 **Goal:** record your own sounds onto the pads with a built-in mic, keep them across power-offs, and play them
 like the built-in kit (pitch, decay, filter, sequencer, chords all apply).
-**Status:** board pads and plate pocket done (v1 and v1.1); firmware not written yet. The pads on the back of the XIAO have been checked: MTCK, MTDO, MTDI and
+**Status:** board footprint and plate pocket done (v1 and v1.1), redone for the real module's 2×3 pins; firmware not written yet. The pads on the back of the XIAO have been checked: MTCK, MTDO, MTDI and
 MTMS are there. The mic module is not ordered yet; it is a **new parts-list line** (INMP441 breakout, about $2.40 each in a 5-pack).
 
 ## 1. How it connects
@@ -15,7 +15,7 @@ XIAO's underside.
 |---|---|---|
 | SCK | `BCK` (D6) | shared with the DAC and amp |
 | WS | `LRCK` (D7) | shared |
-| SD | XIAO **MTDI pad, GPIO41** | wire soldered to the pad before the XIAO is mounted, like the BAT leads |
+| SD | XIAO **MTDI pad, GPIO41** | through J_MIC to J_MTDI, then a wire soldered to the XIAO's pad before the XIAO is mounted, like the BAT leads |
 | L/R | GND | mic sends on the left slot |
 | VDD | 3V3 | 1.4 mA |
 | GND | GND | |
@@ -28,34 +28,35 @@ unaffected.
 uses 16-bit slots, so it moves to 32-bit. The PCM5102A and MAX98357A both accept that; the bit clock goes from
 1.41 to 2.82 MHz.
 
-## 2. Board: pads for the mic (done on v1 and v1.1, no new parts)
+## 2. Board: J_MIC footprint (done on v1 and v1.1, no new board parts)
 
-The PCB isn't ordered yet, so the mic's wiring can go on the board as **pads and traces only**. The mic module
-itself is not soldered to the board. Add to `build.py`, for v1.1 (and v1 if that is the one ordered):
-- **J_MIC:** 6 plated holes, 2.54 mm pitch, just under the mic pocket's edge (y 87): SD, SCK, WS, LR, 3V3, GND.
-  SCK and WS join the existing `BCK`/`LRCK` nets, LR is tied to GND, 3V3 and GND the rails.
-- **J_MTDI:** 1 plated hole just below the XIAO (11.5, 80.5), on a new `MIC_SD` net to J_MIC's SD hole. The fly-wire
+The module (from the listing photos): round, ~14 mm, two notches; **2 rows of 3 pins**, 2.54 mm pitch, rows 7.62 mm
+apart. One row is SCK WS L/R, the other SD VDD GND. The INMP441 is a **bottom-port** mic: the sound port is the hole
+in the middle of the **label side**, and the mic can sits on the other side over it.
+
+So the module mounts **label side up, straight on the main board** with its own header strip:
+- **J_MIC:** a 2×3 footprint centred under the plate's sound hole (52, 94). Seen from the top: SCK WS L/R row toward
+  the pots, SD VDD GND row toward the keys. Only that orientation matches the labels (turning the module round puts SD
+  where L/R should be). SCK and WS join `BCK`/`LRCK`, L/R and GND go to GND, VDD to 3V3, SD to `MIC_SD`. A silk circle
+  shows the module outline.
+- **Height:** the header plastic (2.5 mm) sits on the board, so the module board spans 2.5–3.5 mm above the board and
+  the can hangs below it with ~1.5 mm to spare. The plate's underside is 1.0 mm above the board.
+- **J_MTDI:** 1 plated hole just below the XIAO (11.5, 80.5), on the `MIC_SD` net to J_MIC's SD hole. The fly-wire
   from the XIAO's MTDI pad lands here.
-- **Silkscreen:** "MIC: SD SCK WS 3V3 GND" and "from XIAO MTDI".
-- Re-route with Freerouting and re-plot as in [hardware.md](hardware.md#regenerating-the-hardware-files).
 
-On the build side that is 6 short wires from the module down to J_MIC, plus the one MTDI wire.
-
-**Without the board change** (if v1 boards are ordered as they are): the same six connections become wires to the
-XIAO's D6/D7/3V3/GND header pins on the back. They have to get from the mic, under the plate, to the back of
-the board. The only easy way through is the speaker notch, which is a long, messy run. It works, but the pads are cleaner.
+**Before ordering:** measure the row spacing on the real module (it is read off a photo). It is the one mic number that
+is in copper; everything else only changes the plate.
 
 ## 3. Plate: mic pocket and sound hole (faceplate only)
 
-- **Position:** between the key grid and the pot strip, centred left to right (about x 46, y 93 in plate
-  coordinates). That is clear of the diode relief (y < 85.2) and the pot strip (y > 101.9), and about 50 mm from
-  the speaker.
-- **Pocket** in the plate's underside, shaped to the module: round, about 0.4 mm clearance, depth = module
-  thickness. The sound port faces up.
-- **Sound hole:** 1.5 mm through the remaining roof (~1.3 mm of plastic), lined up with the module's port. Add a
-  ring of thin foam tape around the port so the mic hears the hole, not the cavity under the plate.
-- **Measure when the module arrives:** diameter, board thickness, height of the mic can, and the port's offset
-  from the centre (these modules are usually ~14 mm round). Those numbers go in `layout.py` as `MIC_*`.
+- **Position:** between the key grid and the pot strip, at x 52, y 94 in plate coordinates (clear of the switch cut-outs
+  and the pot strip, about 50 mm from the speaker).
+- **Pocket** in the plate's underside: round, module diameter + 0.8 mm, **3.0 mm deep**. That is the label face (2.5 mm
+  into the plate) plus 0.5 mm for the clipped pin joints and a foam ring. The roof is 1.0 mm.
+- **Sound hole:** 1.5 mm through the roof, over the port. A small ring of thin foam tape around the port seals it
+  to the roof, so the mic hears the hole and not the cavity.
+- **Measure when the module arrives:** row spacing (PCB), diameter and board thickness (plate). Those go in
+  `layout.py` as `MIC_*`.
 
 ## 4. Firmware
 

@@ -443,17 +443,22 @@ function buildModel(STEP) {
     p.wire([[42, 63.5, 7], [30, 62, 8], [10, b[1] + 2, 11], [b[0], b[1], Z.pcb - 1.5], [b[0], b[1], Z.pcb]], '#d03030', 0.45);
     p.wire([[46, 63.5, 7], [30, 60, 7.5], [10, a[1] - 2, 10.5], [a[0], a[1], Z.pcb - 1.5], [a[0], a[1], Z.pcb]], '#222', 0.45);
   }
-  // ---- INMP441 mic: module in the plate pocket (port up), six short wires down to J_MIC; MTDI wire on the back
+  // ---- INMP441 mic: label (port) side up on its own header, straight above J_MIC; the plate pocket closes over it.
+  //      The can is underneath, facing the board; the header plastic is the 2.5 mm spacer. MTDI wire on the back.
   {
     const p = part('mic', { name: 'INMP441 I2S mic module', step: STEP.underplate, explode: 50, refs: ['J_MIC'],
-      info: 'Sits port-up in the pocket under the plate\'s sound hole. Six short wires to J_MIC: SD, SCK, WS, LR, 3V3, GND (LR goes to GND, so the mic sends on the left slot).' });
-    const [mx, my] = L.MIC_C, R = L.MIC_D / 2;
-    p.cylZ(R, 1.0, '#1e5bd6', mx, my, Z.plate + L.MIC_T - 1.0, 40);
-    p.box(3.5, 2.6, 1.0, '#c0c0c0', mx, my, Z.plate + L.MIC_T - 2.0, { metalness: 0.7, roughness: 0.3 });
-    const cols = ['#e0b040', '#4080e0', '#40b060', '#222', '#d03030', '#222'];
-    for (let i = 0; i < 6; i++) {
-      const px = mx - 6.35 + 2.54 * i, py = L.MIC_ROW_Y;
-      p.wire([[px, my - R + 1.2, Z.plate + L.MIC_T - 0.5], [px, py + 0.4, Z.pcbTop + 1.2], [px, py, Z.pcbTop], [px, py, Z.pcb - 1.0]], cols[i], 0.25);
+      info: 'Label side up (the sound port is the hole in the middle of that side), on a 2×3 header into J_MIC: SCK WS L/R toward the knobs, SD VDD GND toward the keys. L/R is tied to GND, so the mic sends on the left slot.' });
+    const [mx, my] = L.MIC_C, R = L.MIC_D / 2, z0 = Z.pcbTop + L.MIC_SPACER;
+    p.cylZ(R, L.MIC_PCB_T, '#1c1f26', mx, my, z0, 48);                                   // module board
+    p.cylZ(1.1, 0.05, '#c89a50', mx, my, z0 + L.MIC_PCB_T, 24);                           // port ring
+    p.cylZ(0.45, 0.06, '#111', mx, my, z0 + L.MIC_PCB_T + 0.01, 16);                      // port
+    p.box(4.7, 3.8, 1.0, '#c0c0c0', mx + 0.6, my, z0 - 1.0, { metalness: 0.7, roughness: 0.3 });   // mic can (underside)
+    for (const j of [-1, 1]) {
+      const py = my + j * L.MIC_ROW_DY;
+      p.box(3 * L.MIC_PITCH, 2.5, L.MIC_SPACER, '#222', mx, py, Z.pcbTop);                // header plastic
+      for (const i of [-1, 0, 1])
+        p.box(0.64, 0.64, L.MIC_SPACER + L.MIC_PCB_T + Z.pcbTop - Z.pcb + 1.2, '#d4af37', mx + i * L.MIC_PITCH, py, Z.pcb - 1.0,
+          { metalness: 0.8, roughness: 0.3 });
     }
   }
   {

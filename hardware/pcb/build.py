@@ -159,13 +159,20 @@ r2=lib("Resistor_THT","R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal","R2",46
 for r,(a,b) in [(r1,("BAT_SW","VSENSE")),(r2,("VSENSE","GND"))]:
     for p in r.Pads(): p.SetNet(net(a if p.GetNumber()=="1" else b))
 text("R1 R2 100k (+shift)" if V11 else "R1 R2 100k",36.5,111.2,0.8)
-# ---- INMP441 mic wiring (docs/mic-plan.md): pads only, the module sits in the plate and is wired down to J_MIC.
-# SD runs to J_MTDI by the XIAO, where a wire from the XIAO's MTDI pad (GPIO41, on its underside) lands.
-mx0=L.MIC_C[0]-6.35
-custom("J_MIC",[(n,mx0+2.54*i,L.MIC_ROW_Y,nn) for i,(n,nn) in enumerate(
-    [("SD","MIC_SD"),("SCK","BCK"),("WS","LRCK"),("LR","GND"),("3V3","3V3"),("GND","GND")])],
-    size=1.6,back=False,lab_dy=-1.9,stagger=True)
-text("MIC",L.MIC_C[0],L.MIC_ROW_Y+2.2,1.0,back=False)
+# ---- INMP441 mic (docs/mic-plan.md): 2x3 footprint straight under the module, which sits label (port) side up
+# on its own header with the plastic spacer between the boards. Seen from the top: SCK WS L/R row toward the pots,
+# SD VDD GND row toward the keys (only one way round matches). SD runs to J_MTDI by the XIAO, where a wire from the
+# XIAO's MTDI pad (GPIO41, on its underside) lands.
+mcx,mcy=L.MIC_C; mp,mdy=L.MIC_PITCH,L.MIC_ROW_DY
+mic_pins=[("SD",-1,-1,"MIC_SD"),("VDD",0,-1,"3V3"),("GND",1,-1,"GND"),("SCK",-1,1,"BCK"),("WS",0,1,"LRCK"),("LR",1,1,"GND")]
+custom("J_MIC",[(n,mcx+mp*i,mcy+mdy*j,nn) for (n,i,j,nn) in mic_pins],size=1.6,labels=False)
+for (n,i,j,_) in mic_pins: text(n,mcx+mp*i,mcy+mdy*j-1.9*j,0.7,back=False)   # labels between the rows, like the module
+_mr=L.MIC_D/2
+for k in range(48):
+    a0,a1=2*math.pi*k/48,2*math.pi*(k+1)/48
+    if abs(math.sin((a0+a1)/2))>0.97: continue                                 # leave the notch ends open
+    seg((mcx+_mr*math.cos(a0),mcy+_mr*math.sin(a0)),(mcx+_mr*math.cos(a1),mcy+_mr*math.sin(a1)),pcbnew.F_SilkS,0.15)
+text("MIC label up",mcx,mcy,0.7,back=False)
 custom("J_MTDI",[("",L.MTDI_PAD[0],L.MTDI_PAD[1],"MIC_SD")],size=1.6,labels=False)
 text("MTDI",L.MTDI_PAD[0]-0.7,L.MTDI_PAD[1]-2.5,0.8)
 text("XO-HUGBOX v1.1" if V11 else "XO-HUGBOX v1",46,4.4,1.2)
