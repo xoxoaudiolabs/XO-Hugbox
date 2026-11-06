@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0b">
+<!-- installable web app: manifest + icons (sim/tools/make_icons.py), service worker sw.js; all paths relative -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hugbox">
 <title>XO-Hugbox Emulator</title>
 <style>
   /* XOXO Audio Labs look (tokens from the xoxoaudiolabs website): black, off-white, grey rules, signal red used sparingly,
@@ -99,6 +107,7 @@
   .knobmap .v { text-align: right; white-space: nowrap; font-weight: 600; }
   .knobmap tr.shiftrow td:first-child { color: var(--signal); }
   /* Phones: just the Hugbox, filling the screen, to play with. "Emulator panels" shows the rest underneath. */
+  [hidden] { display: none !important; }
   .mbar { display: none; }
   body.phone .kbdlabel { display: none; }
   body.phone { overscroll-behavior: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
@@ -132,6 +141,8 @@
       <div class="row"><label for="fwSel">Firmware</label><select id="fwSel" style="flex:1;min-width:0">
         <option value="0">Main UI · views, sequencer, chord + arp, MIDI</option>
         <option value="1">Hardware bring-up test</option></select></div>
+      <div class="row" id="installRow" hidden><button id="installBtn" hidden>Install app</button>
+        <span class="note" id="iosNote" hidden>To install on iPhone: Share, then Add to Home Screen.</span></div>
       <div class="sub">The device's own C++ (<code>firmware/lib/hugbox_core</code>) compiled to WebAssembly with the real U8g2 SH1106 driver:
         6-voice synth, 16-pad sampler, sequencer, FX, projects and MIDI, exactly as the board runs them.</div>
     </div>

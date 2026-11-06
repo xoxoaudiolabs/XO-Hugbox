@@ -698,5 +698,28 @@
   const start = () => { startAudio(); if (ac.state === 'suspended') ac.resume(); $('start').style.display = 'none'; };
   $('startBtn').addEventListener('click', start);
   $('start').addEventListener('click', (e) => { if (e.target === $('start')) start(); });
+
+  // ---------------- installable web app ----------------
+  // sw.js caches the page for offline use; only over https or on this computer (not from file://).
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)))
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  const installed = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
+  let installEvt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {   // Chrome, Edge, Android: our own Install button
+    e.preventDefault();
+    installEvt = e;
+    $('installRow').hidden = $('installBtn').hidden = false;
+  });
+  $('installBtn').addEventListener('click', async () => {
+    if (!installEvt) return;
+    installEvt.prompt();
+    await installEvt.userChoice;
+    installEvt = null;
+    $('installRow').hidden = true;
+  });
+  window.addEventListener('appinstalled', () => { $('installRow').hidden = true; });
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (ios && !installed) $('installRow').hidden = $('iosNote').hidden = false;   // Safari has no install prompt
+
   window.hugboxEmu = { hw, get core() { return core; }, get ac() { return ac; }, get audioBlocks() { return audioBlocks; }, startAudio: start };   // for debugging from the console
 })();
