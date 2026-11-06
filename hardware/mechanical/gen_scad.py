@@ -18,6 +18,7 @@ oled_win_off={L.OLED_WIN_OFF:.2f}; oled_glass_off={L.OLED_GLASS_OFF:.2f}; oled_p
 spk=[{L.SPK['x0']},{L.SPK['y0']},{L.SPK['w']},{L.SPK['h']}]; spk_c=[{L.SPK_C[0]:.2f},{L.SPK_C[1]:.2f}]; grille_r=10;
 shift=[{L.SHIFT[0]},{L.SHIFT[1]}]; pwr=[{L.PWR[0]},{L.PWR[1]}];
 holes={[list(h) for h in L.HOLES]}; top_holes={top_holes};
+mic_c=[{L.MIC_C[0]},{L.MIC_C[1]}]; mic_d={L.MIC_D}; mic_t={L.MIC_T}; mic_hole={L.MIC_HOLE};
 function cx(i)=8+pitch/2+i*pitch; function cy(j)=8+pitch/2+j*pitch;
 module sw(x,y){{ translate([x-cut/2,y-cut/2,-1]) cube([cut,cut,T+2]);
   translate([x-pocket/2,y-pocket/2,-1]) cube([pocket,pocket,T-clip+1]); }}
@@ -46,6 +47,9 @@ difference(){{
   box([oled_c[0],oled_pcb_cy],oled_pcb,-1,oled_pcb_d);
   box([oled_c[0],oled_c[1]+oled_glass_off],oled_glass,-1,oled_glass_d);
   box([oled_c[0],oled_c[1]+oled_win_off],oled_win,-1,T+1);
+  // INMP441 mic: pocket in the underside (port up), sound hole through the roof
+  translate([mic_c[0],mic_c[1],-1]) cylinder(d=mic_d+0.8,h=mic_t+1,$fn=64);
+  translate([mic_c[0],mic_c[1],-1]) cylinder(d=mic_hole,h=T+2,$fn=24);
   // speaker locator + grille
   translate([spk[0],spk[1],-1]) cube([spk[2],spk[3],1.8]);
   for(dx=[-grille_r:4:grille_r]) for(dy=[-grille_r:4:grille_r]) if(dx*dx+dy*dy<=grille_r*grille_r)

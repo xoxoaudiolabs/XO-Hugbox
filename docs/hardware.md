@@ -15,18 +15,19 @@ all generated from it.
 | 1 | **PCF8574T** I/O expander module | P0-P7 header into the board. Desolder the pass-through socket; replace the address jumper caps with solder bridges. The I2C pins go to the 2×2 "PCF I2C" pads with short wires. |
 | 1 | **MAX98357A** I2S amp (generic 7-pin: LRC BCLK DIN GAIN SD GND VIN) | Header from the plain side, printed side facing the floor. GAIN floating = 9 dB, SD default (on, L+R mono). |
 | 1 | **PCM5102A** I2S DAC (purple module) | Printed side down along the right wall, jack out of the right wall. Jumpers: FLT L, DEMP L, XSMT H, FMT L. SCK is tied to GND on the PCB. |
-| 1 | 1.3" **SH1106** I2C OLED, 128×64 (36×34 mm, GND VCC SCK SDA) | Remove the header plastic; solder 0.8 mm above the board. |
+| 1 | 1.3" **SH1106** I2C OLED, 128×64 (35.4×33.5 mm, GND VCC SCK SDA) | Remove the header plastic; solder 0.8 mm above the board. |
 | 4 | WH148 **B10K** 16 mm pots (straight lugs, 15 mm knurled shaft) + 15×17 mm black aluminium knobs (6 mm bore, set screw) | Lugs facing the keys, joined to the board with diode-lead wire legs (see the build guide). |
 | 17 | MX switches + 17 1u keycaps | 16 pads + shift. |
 | 16 | 1N4148 diodes | One per pad. |
 | 2 | 100 kΩ resistors | Battery voltage divider (R1, R2). |
+| 1 | **INMP441** I2S MEMS mic module (round, 6 pins) | Port up in the plate pocket, six short wires to J_MIC; its data comes from the XIAO's MTDI pad (GPIO41) via J_MTDI. See [mic-plan.md](mic-plan.md). |
 | 1 | 3 W 8 Ω box speaker, 28.2×31×15.3 mm | Screwed to two shell posts (M2.5 self-tapping), face against the plate grille. |
 | 1 | LP102540 1100 mAh LiPo with protection board | In the shell cradle under the keys. |
 | 1 | 12D00G-5mm slide switch | Power; actuator through the plate. |
 | 4 | M3×12 countersunk screws | Corners. The fifth hole (knob strip) is a support post only: no screw, solid plate above. |
 | 5 | 1 mm spacers | Between PCB and plate. |
 | 2 | M2.5×6 self-tapping screws | Speaker. |
-| - | Thin hook-up wire | PCF I2C jumpers, XIAO battery leads. |
+| - | Thin hook-up wire | PCF I2C jumpers, XIAO battery leads, MTDI lead, mic wires. |
 
 Target: under $50 in parts per unit.
 

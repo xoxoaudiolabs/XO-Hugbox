@@ -443,6 +443,25 @@ function buildModel(STEP) {
     p.wire([[42, 63.5, 7], [30, 62, 8], [10, b[1] + 2, 11], [b[0], b[1], Z.pcb - 1.5], [b[0], b[1], Z.pcb]], '#d03030', 0.45);
     p.wire([[46, 63.5, 7], [30, 60, 7.5], [10, a[1] - 2, 10.5], [a[0], a[1], Z.pcb - 1.5], [a[0], a[1], Z.pcb]], '#222', 0.45);
   }
+  // ---- INMP441 mic: module in the plate pocket (port up), six short wires down to J_MIC; MTDI wire on the back
+  {
+    const p = part('mic', { name: 'INMP441 I2S mic module', step: STEP.underplate, explode: 50, refs: ['J_MIC'],
+      info: 'Sits port-up in the pocket under the plate\'s sound hole. Six short wires to J_MIC: SD, SCK, WS, LR, 3V3, GND (LR goes to GND, so the mic sends on the left slot).' });
+    const [mx, my] = L.MIC_C, R = L.MIC_D / 2;
+    p.cylZ(R, 1.0, '#1e5bd6', mx, my, Z.plate + L.MIC_T - 1.0, 40);
+    p.box(3.5, 2.6, 1.0, '#c0c0c0', mx, my, Z.plate + L.MIC_T - 2.0, { metalness: 0.7, roughness: 0.3 });
+    const cols = ['#e0b040', '#4080e0', '#40b060', '#222', '#d03030', '#222'];
+    for (let i = 0; i < 6; i++) {
+      const px = mx - 6.35 + 2.54 * i, py = L.MIC_ROW_Y;
+      p.wire([[px, my - R + 1.2, Z.plate + L.MIC_T - 0.5], [px, py + 0.4, Z.pcbTop + 1.2], [px, py, Z.pcbTop], [px, py, Z.pcb - 1.0]], cols[i], 0.25);
+    }
+  }
+  {
+    const p = part('mtdi', { name: 'MTDI wire (mic data)', step: STEP.xiao, explode: 8, refs: ['J_MTDI'],
+      info: 'Solder it to the MTDI pad (GPIO41) on the XIAO\'s underside BEFORE mounting the XIAO, like the battery leads; it lands in J_MTDI next to the XIAO.' });
+    const [tx, ty] = L.MTDI_PAD;
+    p.wire([[L.XIAO_C[0] + 2, L.XIAO_C[1] - 4, Z.modTop + 0.6], [tx + 1, ty + 1.5, Z.modTop + 0.8], [tx, ty, Z.pcb - 1.2], [tx, ty, Z.pcb]], '#e0b040', 0.3);
+  }
   {
     const p = part('antenna', { name: 'U.FL antenna (XIAO S3)', step: STEP.battery, explode: 8,
       info: 'Flat antenna stuck to the inside of a wall, cable to the U.FL socket on the XIAO. Keep it clear of the speaker magnet and the battery.' });

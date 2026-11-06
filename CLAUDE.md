@@ -10,7 +10,10 @@ Read first: [README.md](README.md), [docs/hardware.md](docs/hardware.md), [docs/
 - Hardware design complete, nothing built yet. Board v1 gerbers are the order candidate; v1.1 (separate speaker data
   line) waits on the breadboard test in [docs/speaker-path-plan.md](docs/speaker-path-plan.md).
 - Firmware stages done in code: UI, synth + sampler, projects/sequencer extras, FX, USB + BLE MIDI. None run on hardware.
-- Next: bring-up on real parts (check the "audio load" serial line first), the v1.1 test, then user samples from flash.
+- Both boards carry pads for an INMP441 mic (J_MIC, plus J_MTDI for a wire from the XIAO's GPIO41 pad); the plate has
+  its pocket. Mic firmware is not written yet: see [docs/mic-plan.md](docs/mic-plan.md).
+- Next: bring-up on real parts (check the "audio load" serial line first), the v1.1 + mic breadboard test, then
+  mic recording and user samples from flash.
 
 ## Rules of the road
 

@@ -33,6 +33,12 @@
     )
   )
   (placement
+    (component custom:J_MTDI
+      (place J_MTDI 41500.000000 -117000.000000 front 0.000000)
+    )
+    (component custom:J_MIC
+      (place J_MIC 75650.000000 -110500.000000 front 0.000000)
+    )
     (component R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal
       (place R2 76100.000000 -95900.000000 back 270.000000 (PN R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal))
       (place R1 57000.000000 -95900.000000 back 270.000000 (PN R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal))
@@ -116,6 +122,17 @@
     )
   )
   (library
+    (image custom:J_MTDI
+      (pin Rect[A]Pad_1600x1600_um 1 0 0)
+    )
+    (image custom:J_MIC
+      (pin Round[A]Pad_1600_um 6 12700 0)
+      (pin Round[A]Pad_1600_um 5 10160 0)
+      (pin Round[A]Pad_1600_um 4 7620 0)
+      (pin Round[A]Pad_1600_um 3 5080 0)
+      (pin Round[A]Pad_1600_um 2 2540 0)
+      (pin Rect[A]Pad_1600x1600_um 1 0 0)
+    )
     (image R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal
       (outline (path signal 120  7080 -1370  7080 -1040))
       (outline (path signal 120  540 1370  7080 1370))
@@ -420,8 +437,8 @@
       (pins D16-2 SW16-2)
     )
     (net GND
-      (pins R2-2 J13-2 J11-1 U4-5 U4-1 J9-2 U3-6 U1-9 U5-4 RV4-1 RV3-1 RV2-1 RV1-1
-        SW17-2)
+      (pins J_MIC-6 J_MIC-4 R2-2 J13-2 J11-1 U4-5 U4-1 J9-2 U3-6 U1-9 U5-4 RV4-1 RV3-1
+        RV2-1 RV1-1 SW17-2)
     )
     (net VSENSE
       (pins R2-1 R1-2 U1-12 SW17-1)
@@ -430,7 +447,7 @@
       (pins U1-1 RV1-2)
     )
     (net 3V3
-      (pins U4-6 J9-1 U3-7 U1-10 U5-3 RV4-3 RV3-3 RV2-3 RV1-3)
+      (pins J_MIC-5 U4-6 J9-1 U3-7 U1-10 U5-3 RV4-3 RV3-3 RV2-3 RV1-3)
     )
     (net POT1
       (pins U1-2 RV2-2)
@@ -454,7 +471,7 @@
       (pins R1-1 J13-1 SW18-2)
     )
     (net BCK
-      (pins U4-2 U3-2 U1-7)
+      (pins J_MIC-2 U4-2 U3-2 U1-7)
     )
     (net SPK_DIN
       (pins U3-3 U1-11)
@@ -463,11 +480,15 @@
       (pins U4-3 U1-13)
     )
     (net LRCK
-      (pins U4-4 U3-1 U1-14)
+      (pins J_MIC-3 U4-4 U3-1 U1-14)
+    )
+    (net MIC_SD
+      (pins J_MTDI-1 J_MIC-1)
     )
     (class kicad_default "" 3V3 BAT_RAW BAT_SW BCK C0 C1 C2 C3 DIN GND LRCK
-      POT0 POT1 POT2 POT3 R0 R1 R2 R3 SCL SDA SPK_DIN SWD1 SWD10 SWD11 SWD12
-      SWD13 SWD14 SWD15 SWD16 SWD2 SWD3 SWD4 SWD5 SWD6 SWD7 SWD8 SWD9 VSENSE
+      MIC_SD POT0 POT1 POT2 POT3 R0 R1 R2 R3 SCL SDA SPK_DIN SWD1 SWD10 SWD11
+      SWD12 SWD13 SWD14 SWD15 SWD16 SWD2 SWD3 SWD4 SWD5 SWD6 SWD7 SWD8 SWD9
+      VSENSE
       (circuit
         (use_via Via[0-1]_800:400_um)
       )

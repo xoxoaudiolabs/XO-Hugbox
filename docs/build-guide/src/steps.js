@@ -23,7 +23,7 @@ window.HUGBOX_GUIDE = (() => {
     caps: [[60, -125, 135], [46, 80, 22]],
     screen: [[53, 95, 115], [53, 140, 24]],
   };
-  const BOARD = ['pcb', 'diodes', 'resistors', 'xiao', 'max', 'pcf', 'pcm', 'switches', 'spacers', 'pots', 'oled', 'power', 'plate'];
+  const BOARD = ['pcb', 'diodes', 'resistors', 'xiao', 'max', 'pcf', 'pcm', 'switches', 'spacers', 'pots', 'oled', 'power', 'mic', 'mtdi', 'plate'];
 
   const BOM = [
     ['XO-Hugbox v1 PCB', 1, '2-layer 1.6 mm, ordered 5 from PCBWay'],
@@ -39,6 +39,7 @@ window.HUGBOX_GUIDE = (() => {
     ['MX switch', 17, '16 pads + shift'],
     ['1u MX keycap', 17, '16 + one for shift (orange in the render)'],
     ['1N4148 diode', 16, 'one per pad'],
+    ['INMP441 I2S mic module', 1, 'round breakout; records samples (see docs/mic-plan.md)'],
     ['100 kΩ resistor', 2, 'battery divider R1, R2'],
     ['12D00G-5mm slide switch', 1, 'power'],
     ['3 W 8 Ω box speaker 28.2×31×15.3 mm', 1, 'with two screw ears'],
@@ -81,17 +82,18 @@ window.HUGBOX_GUIDE = (() => {
         The square pad is the row line (R0–R3); the round pad goes to the switch. A reversed diode makes that pad dead.</div>`,
     },
     {
-      title: 'XIAO ESP32-S3 (back)', view: V.xiao, focus: ['xiao'],
+      title: 'XIAO ESP32-S3 (back)', view: V.xiao, focus: ['xiao', 'mtdi'],
       body: `
         <div class="callout warn"><b>Battery leads first.</b> Before the XIAO goes anywhere, solder two short wires (red +, black −, ~4 cm)
         to the <b>BAT+ / BAT− pads</b> on the XIAO. Once it is on the board those pads face the PCB and you cannot reach them.
-        They go to the <b>J13 "+ −, to XIAO BAT pads"</b> pair just below the XIAO (switched battery, after the power switch).</div>
+        They go to the <b>J13 "+ −, to XIAO BAT pads"</b> pair just below the XIAO (switched battery, after the power switch).
+        Do the same for the mic: a ~6 cm wire on the <b>MTDI pad</b> (GPIO41), which lands in <b>J_MTDI</b> ("MTDI") just below the XIAO.</div>
         <ol>
           <li>Must be the <b>ESP32-S3</b> (native USB MIDI and 8 MB PSRAM), not the C3 or plain ESP32.</li>
           <li>Component side (shield can) faces the <b>floor</b>, USB-C toward the <b>left wall</b>.</li>
           <li>Use the header strips with their plastic between the boards (2.5 mm). Pins D0–D6 are the row nearest the pots,
           5V/GND/3V3/D10–D7 the row nearest the keys - match the silk.</li>
-          <li>Solder the BAT leads to J13 (+ to +). Keep the U.FL antenna for step 10.</li>
+          <li>Solder the BAT leads to J13 (+ to +) and the MTDI wire to J_MTDI. Keep the U.FL antenna for step 10.</li>
         </ol>`,
     },
     {
@@ -131,11 +133,11 @@ window.HUGBOX_GUIDE = (() => {
         </ol>`,
     },
     {
-      title: 'Pots, OLED and power switch (top, before the plate)', view: V.underplate, focus: ['pots', 'oled', 'power'],
+      title: 'Pots, OLED, power switch and mic (top, before the plate)', view: V.underplate, focus: ['pots', 'oled', 'power', 'mic'],
       ghost: ['plate', 'switches'], offsets: { plate: 45, switches: 45 },
       body: `
-        <div class="callout fix"><b>Before the plate:</b> all three sit <i>under</i> the plate (pot cans and lugs in the strip pockets,
-        OLED in its window pocket, switch body in its slot). Place them now, solder them in step 7.</div>
+        <div class="callout fix"><b>Before the plate:</b> all four sit <i>under</i> the plate (pot cans and lugs in the strip pockets,
+        OLED in its window pocket, switch body in its slot, mic in its pocket). Place them now, solder them in step 7.</div>
         <ol>
           <li><b>4× WH148 B10K</b>, straight-lug type: the lugs leave the side of the can about 5.3 mm up and are too short to
           bend down to the board. First, on the bench, solder a <b>diode lead offcut</b> to the tip of each lug, pointing straight
@@ -146,6 +148,9 @@ window.HUGBOX_GUIDE = (() => {
           (the firmware's <code>U8G2_R2</code> turns the picture back). Board pads read SDA SCL VCC GND left to right.
           It must end up <b>0.8 mm above the board</b> - the plate pocket sets that height in the next step.</li>
           <li><b>12D00G power switch</b>: three pins in, actuator up.</li>
+          <li><b>INMP441 mic</b>: solder six short wires (~15 mm) to its pads, then set the module <b>port up</b> in the plate's
+          mic pocket (under the small hole between the keys and the knobs), with a ring of thin foam tape around the port.
+          The wires drop into <b>J_MIC</b>: SD, SCK, WS, LR, 3V3, GND, as printed on the board.</li>
         </ol>`,
     },
     {
@@ -155,7 +160,7 @@ window.HUGBOX_GUIDE = (() => {
           <li>Put a <b>1 mm spacer</b> on each of the five screw holes.</li>
           <li>Lower plate + switches onto the board: every switch's pins through, pot shafts up through their holes,
           OLED glass into its window, slide actuator in its slot. Thread the pot nuts on loosely to hold the stack.</li>
-          <li>Flip it and solder: <b>17 switches</b>, then the <b>pot legs</b> (clip them flush afterwards), the <b>OLED</b> (check it is level and 0.8 mm up) and the <b>power switch</b>.</li>
+          <li>Flip it and solder: <b>17 switches</b>, then the <b>pot legs</b> (clip them flush afterwards), the <b>OLED</b> (check it is level and 0.8 mm up), the <b>power switch</b> and the six <b>mic wires</b> in J_MIC.</li>
         </ol>
         <div class="callout tip">Press each switch while it cools so it sits flat in the plate.</div>`,
     },

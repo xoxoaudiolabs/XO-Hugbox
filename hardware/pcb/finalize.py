@@ -9,7 +9,10 @@ from pcbnew import VECTOR2I, FromMM as M
 src = f'xo_hugbox{SUF}.kicad_pcb' if os.environ.get("FINALIZE_AGAIN") else f'xo_hugbox{SUF}_routed.kicad_pcb'
 b=pcbnew.LoadBoard(src)
 b.BuildConnectivity(); conn=b.GetConnectivity()
-dead=[t for t in b.GetTracks() if t.GetClass()=='PCB_TRACK' and conn.TestTrackEndpointDangling(t,False)]
+# A track running via-to-via can be reported as dangling by KiCad 7 although both ends land on vias: keep those.
+vias={(v.GetPosition().x,v.GetPosition().y) for v in b.GetTracks() if v.GetClass()=='PCB_VIA'}
+def via_to_via(t): return (t.GetStart().x,t.GetStart().y) in vias and (t.GetEnd().x,t.GetEnd().y) in vias
+dead=[t for t in b.GetTracks() if t.GetClass()=='PCB_TRACK' and conn.TestTrackEndpointDangling(t,False) and not via_to_via(t)]
 for t in dead: b.Remove(t)
 b.GetDesignSettings().m_CopperEdgeClearance=M(0.3)
 for d in b.GetDrawings():

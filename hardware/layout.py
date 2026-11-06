@@ -64,3 +64,10 @@ POT_CAN_D = 16.27               # can diameter (measured)
 POT_LUG_Z = 5.28                # PCB top -> underside of the lugs (measured)
 POT_LUG_L = 4.38                # lug reach past the can (measured)
 POT_LUG_T = 0.5                 # lug thickness (assumed)
+# INMP441 I2S mic (docs/mic-plan.md): module in a plate pocket between the keys and the pot strip, port facing up.
+MIC_C = (52.0, 94.0)            # module centre (pocket + sound hole)
+MIC_ROW_Y = 87.0                # J_MIC wire holes on the board, just under the pocket edge toward the keys
+MIC_D = 14.5                   # module diameter (typical listing value - measure!)
+MIC_T = 2.4                    # module board + mic can, no header (measure!)
+MIC_HOLE = 1.5                 # sound hole through the plate, over the module's port (assumed centred - measure!)
+MTDI_PAD = (11.5, 80.5)         # J_MTDI landing pad for the wire from the XIAO's MTDI pad (GPIO41)

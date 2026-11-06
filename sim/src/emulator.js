@@ -63,6 +63,7 @@
   // speaker grille
   for (let dx = -10; dx <= 10; dx += 4) for (let dy = -10; dy <= 10; dy += 4)
     if (dx * dx + dy * dy <= 100) el('circle', { cx: L.SPK_C[0] + dx, cy: Y(L.SPK_C[1] + dy), r: 1, fill: '#2b2b2b' });
+  el('circle', { cx: L.MIC_C[0], cy: Y(L.MIC_C[1]), r: L.MIC_HOLE / 2, fill: '#2b2b2b' });   // mic sound hole
 
   // OLED: window in the plate, glass, then the 128x64 active area (29.42 x 14.7 mm on a 1.3" SH1106)
   const [ox, oy] = L.OLED_C;
