@@ -36,6 +36,34 @@ EM_JS(void, js_midi_out, (int b0, int b1, int b2, int len), {
   if (Module.onMidiOut) Module.onMidiOut(len === 1 ? [b0] : len === 2 ? [b0, b1] : [b0, b1, b2]);
 });
 
+// User samples (the mic recordings) live in IndexedDB. The page loads them into Module.userSamples (slot -> Int16Array)
+// before the core starts, so these calls stay synchronous like the board's flash; saves go back through onSampleSaved.
+EM_JS(int, js_sample_frames, (int slot), {
+  const a = Module.userSamples && Module.userSamples.get(slot);
+  return a ? a.length : 0;
+});
+EM_JS(int, js_sample_load, (int slot, int16_t *buf, int max), {
+  const a = Module.userSamples && Module.userSamples.get(slot);
+  if (!a) return 0;
+  const n = Math.min(a.length, max);
+  HEAP16.set(a.subarray(0, n), buf >> 1);
+  return n;
+});
+EM_JS(int, js_sample_save, (int slot, const int16_t *buf, int n), {
+  const a = HEAP16.slice(buf >> 1, (buf >> 1) + n);
+  if (Module.userSamples) Module.userSamples.set(slot, a);
+  if (Module.onSampleSaved) Module.onSampleSaved(slot, a);
+  return 1;
+});
+EM_JS(void, js_sample_delete, (int slot), {
+  if (Module.userSamples) Module.userSamples.delete(slot);
+  if (Module.onSampleSaved) Module.onSampleSaved(slot, null);
+});
+static uint32_t sampleFrames(int slot) { return (uint32_t)js_sample_frames(slot); }
+static uint32_t loadSample(int slot, int16_t *buf, uint32_t max) { return (uint32_t)js_sample_load(slot, buf, (int)max); }
+static bool saveSample(int slot, const int16_t *d, uint32_t n) { return js_sample_save(slot, d, (int)n) != 0; }
+static void deleteSample(int slot) { js_sample_delete(slot); }
+
 static size_t loadProject(int slot, uint8_t *buf, size_t max) { return (size_t)js_load_project(slot, buf, (int)max); }
 static bool saveProject(int slot, const uint8_t *buf, size_t len) { return js_save_project(slot, buf, (int)len) != 0; }
 static void midiOut(const uint8_t *m, int len) { js_midi_out(m[0], len > 1 ? m[1] : 0, len > 2 ? m[2] : 0, len); }
@@ -50,6 +78,7 @@ static App *app = &mainApp;
 static int appIndex = 0;
 static Inputs in;
 static int16_t audioBuf[AUDIO_FRAMES * 2 * 8];
+static int32_t micBuf[AUDIO_FRAMES * 8];   // the page writes the browser mic here (24-bit) before each hb_render
 static uint8_t panel[1024];   // what the SH1106 RAM holds after the last SendBuffer
 static uint32_t panelFrame = ~0u;
 
@@ -71,6 +100,10 @@ EMSCRIPTEN_KEEPALIVE void hb_init(int oledOk, int pcfOk, int which) {
   p.loadProject = loadProject;
   p.saveProject = saveProject;
   p.midiOut = midiOut;
+  p.sampleFrames = sampleFrames;
+  p.loadSample = loadSample;
+  p.saveSample = saveSample;
+  p.deleteSample = deleteSample;
   app->begin(p);
 }
 
@@ -92,7 +125,10 @@ EMSCRIPTEN_KEEPALIVE void hb_loop(uint32_t nowMs) { app->loop(nowMs, in); }
 // Renders frames (multiple of AUDIO_FRAMES, at most 8 blocks) in AUDIO_FRAMES blocks like the I2S task.
 EMSCRIPTEN_KEEPALIVE int16_t *hb_render(int frames) {
   if (frames > AUDIO_FRAMES * 8) frames = AUDIO_FRAMES * 8;
-  for (int f = 0; f < frames; f += AUDIO_FRAMES) app->render(audioBuf + 2 * f, AUDIO_FRAMES);
+  for (int f = 0; f < frames; f += AUDIO_FRAMES) {
+    app->micIn(micBuf + f, AUDIO_FRAMES);            // like the board: mic block in, then the render
+    app->render(audioBuf + 2 * f, AUDIO_FRAMES);
+  }
   return audioBuf;
 }
 
@@ -120,6 +156,10 @@ EMSCRIPTEN_KEEPALIVE int hb_view() { return appIndex == 0 ? mainApp.view() : -1;
 EMSCRIPTEN_KEEPALIVE int hb_track() { return appIndex == 0 ? mainApp.track() : -1; }
 EMSCRIPTEN_KEEPALIVE int hb_pad_note(int pad) { return appIndex == 0 ? mainApp.padNote(pad) : -1; }
 EMSCRIPTEN_KEEPALIVE int hb_param(int id) { return mainApp.param(id); }
+// Mic input buffer (AUDIO_FRAMES * 8 signed 24-bit samples) and the sampling state for the faceplate light.
+EMSCRIPTEN_KEEPALIVE int32_t *hb_mic_buf() { return micBuf; }
+EMSCRIPTEN_KEEPALIVE int hb_mic_state() { return appIndex == 0 ? mainApp.micState() : 0; }
+EMSCRIPTEN_KEEPALIVE int hb_user_frames(int slot) { return appIndex == 0 ? (int)mainApp.userFrames(slot) : 0; }
 EMSCRIPTEN_KEEPALIVE int hb_brightness() { return appIndex == 0 ? mainApp.brightness() : 100; }
 
 }  // extern "C"

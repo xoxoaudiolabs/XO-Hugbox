@@ -184,6 +184,23 @@
         <ul><li><kbd>Shift</kbd> + <kbd>4</kbd> (FX): knob 3 <span class="lbl">DLY</span> (amount), 1 <span class="lbl">TIME</span>
           (1/32…1/2, synced), 2 <span class="lbl">FDBK</span>, 4 <span class="lbl">DRV</span>; with Shift
           <span class="lbl">CRSH</span> (bits), <span class="lbl">LOFI</span>, <span class="lbl">LCUT</span> (low cut), <span class="lbl">MVOL</span>.</li></ul>
+        <h3>Record a sound onto a pad</h3>
+        <ol>
+          <li>Click <b>Use mic</b> (Mic · samples, below). On the Hugbox, the mic is the small hole marked MIC.</li>
+          <li><kbd>Shift</kbd> + <b>hold</b> <kbd>F</kbd> (REC) for a moment: the SAMPLE view opens with an input meter.
+            (A quick tap is still sequencer record.)</li>
+          <li><b>Hold</b> a pad, make the sound, let go. Up to 20 s. The take is trimmed to the sound and plays back once;
+            the pad now shows <b>U01</b>…<b>U16</b> on every screen.</li>
+          <li>Too quiet or clipping? <kbd>Shift</kbd> + knob 1 <span class="lbl">GAIN</span> (the meter shows while you turn it).
+            To start only when the sound does: SETTINGS, <kbd>Shift</kbd> + knob 2 <span class="lbl">THRS</span>.</li>
+          <li>Leave the view (<kbd>Shift</kbd> + any view) and the samples are saved.</li>
+        </ol>
+        <h3>Edit a sample</h3>
+        <ul><li>In SAMPLE, tap a recorded pad: its waveform fills the screen (the same editor as XOXO Studio's). Knobs:
+          1 <span class="lbl">STRT</span>, 2 <span class="lbl">END</span> (the two markers), 3 <span class="lbl">FDIN</span>,
+          4 <span class="lbl">FDOU</span> (fades); with Shift <span class="lbl">GAIN</span>, <span class="lbl">NORM</span> (to -6 dB),
+          <span class="lbl">REV</span> (reverse) and <span class="lbl">SRC</span>: turn it to KIT to put the built-in sound back (back to USER undoes it until you leave SAMPLE).
+          Pitch, decay and filter are the pad's usual SOUND knobs.</li></ul>
         <h3>Save or load a project</h3>
         <ol>
           <li><kbd>Shift</kbd> + <kbd>V</kbd> (SET). The top two pad rows are slots <b>S1-S8</b> (filled = has a project).</li>
@@ -218,7 +235,7 @@
         <div class="grid4">
           <span><b>1</b>PLAY</span><span><b>2</b>SEQ</span><span><b>3</b>SOUND</span><span><b>4</b>FX</span>
           <span><b>Q</b>PAGE 1</span><span><b>W</b>PAGE 2</span><span><b>E</b>PAGE 3</span><span><b>R</b>PAGE 4</span>
-          <span><b>A</b>DRUM</span><span><b>S</b>SYNTH</span><span><b>D</b>RUN/STOP</span><span><b>F</b>REC</span>
+          <span><b>A</b>DRUM</span><span><b>S</b>SYNTH</span><span><b>D</b>RUN/STOP</span><span><b>F</b>REC · hold: SAMPLE</span>
           <span><b>Z</b>STANDALONE</span><span><b>X</b>CONTROLLER</span><span><b>C</b>LAYERED</span><span><b>V</b>SETTINGS</span>
         </div>
         <ul>
@@ -250,7 +267,9 @@
           <li><b>SOUND</b>: drum: the selected pad's sound. Synth: OSC, FILTER and CHORD/ARP pages.</li>
           <li><b>FX</b>: master delay, drive, bitcrush, lo-fi, low cut and volume.</li>
           <li><b>SETTINGS</b>: pads = projects (S1-S8), page copy/paste/clear, track mutes, tap tempo, panic.
-            Knobs: synth MIDI channel, drum MIDI channel, clock source, Bluetooth; Shift: screen brightness.</li>
+            Knobs: synth MIDI channel, drum MIDI channel, clock source, Bluetooth; Shift: screen brightness, mic start
+            threshold (OFF = start on the press), mic monitor.</li>
+          <li><b>SAMPLE</b> (<kbd>Shift</kbd> + hold REC): record the mic onto pads and edit them. Filled pads hold a recording.</li>
         </ul>
       </details>
     </div>
@@ -265,6 +284,16 @@
         <select id="outSel"><option value="line">Line out (PCM5102A jack)</option><option value="spk">Speaker (MAX98357A + 3 W box, approx.)</option></select></div>
       <div class="row"><label for="mon">Monitor level</label><input id="mon" type="range" min="0" max="1" step="0.01" value="0.6"></div>
       <div class="note">Monitor level only scales your computer's output; the device's own volume is a knob parameter (MVOL, or pot 0 in the bring-up test).</div>
+    </div>
+    <div class="card">
+      <h2>Mic · samples</h2>
+      <div class="note">The board's INMP441 mic listens through the small hole marked <b>MIC</b> between the keys and the knobs.
+        Here your computer's mic stands in for it (turned down 20 dB, about as sensitive as the INMP441).
+        <kbd>Shift</kbd> + <b>hold</b> <kbd>F</kbd> (REC) for 0.6 s opens SAMPLE; then hold a pad to record onto it.
+        Use headphones if you turn the monitor on.</div>
+      <div class="row"><button id="micBtn">Use mic</button><span class="stat" id="micState">mic off</span></div>
+      <div class="row"><span class="stat" id="smpState"></span><button id="smpClear">Clear saved samples</button></div>
+      <div class="note">Recorded samples are kept in this browser (IndexedDB), like the board keeps them on its flash.</div>
     </div>
     <div class="card">
       <h2>Board</h2>
@@ -304,10 +333,10 @@
         <b>Double-tap Shift</b> to show the shortcut map, then tap any pad to run it (Shift tap, a knob or 5 s closes it).
         Knobs only take over a value once you turn them past it (the readout shows <i>TURN</i> until then).
         In SEQ, tap a pad to toggle a step; hold a step and turn a knob to set its velocity / pitch / gate / probability.
-        Synth track: chords and the arpeggiator are on SOUND page 3 (Shift + SND until it shows CHORD/ARP), or on the PLAY view's shift knobs.</div>
+        Synth track: chords and the arpeggiator are on SOUND page 3 (Shift + SND until it shows CHORD/ARP), or on the PLAY view's shift knobs.
+        <b>Shift + hold F</b> (REC) opens SAMPLE: hold a pad to record the mic onto it, tap a pad to play it.</div>
       <div class="note" id="bringNote">Pad n = C4 + n semitones (pad 0 = C4 top-left … pad 15 = D#5). Lowest held pad wins. Shift + pad = 1 kHz.</div>
       <div class="keys" id="keymap"></div>
-      <div class="note" style="margin-top:8px">Not emulated yet: loading your own samples (see <code>sim/README.md</code>).</div>
     </div>
   </div>
 </div>

@@ -23,6 +23,7 @@ orientation" to see what the panel itself holds). Audio is rendered in 128-frame
 | `.../main_app.*` | The instrument: views, status line, knob pages with pick-up, shift map, sequencer clock, chord mode, arpeggiator, modes. Control map at the top of `main_app.h`. |
 | `.../engine.*`, `dsp.h` | Sound: 6-voice synth (PolyBLEP saw/square, sine, noise, 2-op FM, TPT state-variable filter, ADSR, drift, glide) and the 16-pad sample player (pitch, decay, filter, level, pan, choke). |
 | `.../fx.*` | Master FX: drive, bitcrush, LOFI, tempo-synced ping-pong delay, low cut. |
+| `.../mic.cpp` | Mic sampling: recorder, sample editor (XOXO Studio's), user samples. In the emulator the computer's mic ("Use mic") stands in for the INMP441 and samples live in IndexedDB. `tools/sample_test.js` checks the flow headless. |
 | `.../io.cpp` | Projects (autosave + 8 slots, SETTINGS pad grid) and MIDI (notes, CCs, clock in/out). In the emulator projects live in `localStorage` and MIDI goes to the MIDI card (monitor + optional Web MIDI devices). |
 | `.../kit.cpp` | Built-in kit: 16 one-shots synthesized into memory at boot (~0.8 MB, PSRAM on the board). |
 | `.../bringup_app.*` | Port of `firmware/src/bringup/main.cpp` (bring-up test in the emulator). |

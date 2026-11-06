@@ -1,9 +1,12 @@
 // XO-Hugbox firmware - board platform layer.
 // All behaviour lives in lib/hugbox_core (the same C++ the browser emulator runs). This file only does
-// hardware: PCF8574 key matrix, ADC pots/battery, shift key, the OLED object, I2S out, project files on
-// flash (LittleFS), USB + BLE MIDI (midi_io.cpp), and the two tasks.
+// hardware: PCF8574 key matrix, ADC pots/battery, shift key, the OLED object, I2S out + the INMP441 mic in,
+// project and sample files on flash (LittleFS), USB + BLE MIDI (midi_io.cpp), and the two tasks.
 //   core 0: UI task  - scan inputs, app.loop() (pads, knobs, OLED, sequencer edits)
-//   core 1: audio task - app.render() 128 frames -> i2s.write (blocks on DMA, paces itself at 44.1 kHz)
+//   core 1: audio task - i2s read (mic) -> app.micIn() -> app.render() 128 frames -> i2s.write
+//           (blocks on DMA, paces itself at 44.1 kHz)
+// I2S0 runs full duplex with 32-bit slots (BCK 2.82 MHz): the INMP441 needs 64 clocks per frame. The DAC and amp
+// take the 16-bit mix in the top half of each slot; the mic sends 24 bits on the left slot (its L/R pin is on GND).
 #include <Arduino.h>
 #include <ESP_I2S.h>
 #include <LittleFS.h>
@@ -51,6 +54,62 @@ static bool saveProject(int slot, const uint8_t *buf, size_t len) {
   return LittleFS.rename(tmp, path);
 }
 
+// ---- user samples: /s0.hus .. /s15.hus = "HUGS", version, rate, frames, then 16-bit mono. Temp file + rename
+// like the projects. Writing stalls the audio task (flash writes pause PSRAM); the app mutes the output first.
+struct HusHeader { char magic[4]; uint16_t version, reserved; uint32_t rate, frames; };
+static void samplePath(char *out, int slot, const char *ext) { snprintf(out, 16, "/s%d.%s", slot, ext); }
+static uint32_t sampleFrames(int slot) {
+  if (!fsOk) return 0;
+  char path[16];
+  samplePath(path, slot, "hus");
+  File f = LittleFS.open(path, "r");
+  if (!f) return 0;
+  HusHeader h;
+  const bool ok = f.read((uint8_t *)&h, sizeof h) == sizeof h && !memcmp(h.magic, "HUGS", 4) && h.version == 1 &&
+                  h.rate == SAMPLE_RATE && f.size() >= sizeof h + h.frames * 2;
+  f.close();
+  return ok ? h.frames : 0;
+}
+static uint32_t loadSample(int slot, int16_t *buf, uint32_t max) {
+  const uint32_t n = sampleFrames(slot);
+  if (!n) return 0;
+  char path[16];
+  samplePath(path, slot, "hus");
+  File f = LittleFS.open(path, "r");
+  if (!f) return 0;
+  f.seek(sizeof(HusHeader));
+  const uint32_t want = n < max ? n : max;
+  const uint32_t got = f.read((uint8_t *)buf, want * 2) / 2;
+  f.close();
+  return got;
+}
+static bool saveSample(int slot, const int16_t *data, uint32_t frames) {
+  if (!fsOk) return false;
+  char path[16], tmp[16];
+  samplePath(path, slot, "hus");
+  samplePath(tmp, slot, "tmp");
+  // temp file + rename needs room for the old and the new copy; when the flash is that full, drop the old one first
+  if (LittleFS.totalBytes() - LittleFS.usedBytes() < sizeof(HusHeader) + frames * 2 + 16384) LittleFS.remove(path);
+  File f = LittleFS.open(tmp, "w");
+  if (!f) return false;
+  HusHeader h = {{'H', 'U', 'G', 'S'}, 1, 0, SAMPLE_RATE, frames};
+  bool ok = f.write((const uint8_t *)&h, sizeof h) == sizeof h;
+  for (uint32_t i = 0; ok && i < frames; i += 4096) {   // in chunks: PSRAM -> flash
+    const uint32_t k = frames - i < 4096 ? frames - i : 4096;
+    ok = f.write((const uint8_t *)(data + i), k * 2) == k * 2;
+  }
+  f.close();
+  if (!ok) { LittleFS.remove(tmp); return false; }
+  LittleFS.remove(path);
+  return LittleFS.rename(tmp, path);
+}
+static void deleteSample(int slot) {
+  if (!fsOk) return;
+  char path[16];
+  samplePath(path, slot, "hus");
+  LittleFS.remove(path);
+}
+
 static void midiOut(const uint8_t *msg, int len) { midi_io::send(msg, len); }
 static void midiDeliver(MidiSource src, const uint8_t *msg, int len) { app.midiIn(src, msg, len); }
 
@@ -89,14 +148,21 @@ static volatile uint32_t renderUsSum = 0, renderUsMax = 0, renderBlocks = 0;
 
 static void audioTask(void *) {
   static int16_t buf[AUDIO_FRAMES * 2];
+  static int32_t rx[AUDIO_FRAMES * 2], tx[AUDIO_FRAMES * 2], mic[AUDIO_FRAMES];
   for (;;) {
+    // the mic block that arrived with the last one out (same clocks, so this paces like the write)
+    if (i2s.readBytes((char *)rx, sizeof rx) == sizeof rx) {
+      for (int n = 0; n < AUDIO_FRAMES; n++) mic[n] = rx[2 * n] >> 8;   // left slot, top 24 bits
+      app.micIn(mic, AUDIO_FRAMES);
+    }
     const int64_t t = esp_timer_get_time();
     app.render(buf, AUDIO_FRAMES);
     const uint32_t us = (uint32_t)(esp_timer_get_time() - t);
     renderUsSum = renderUsSum + us;
     if (us > renderUsMax) renderUsMax = us;
     renderBlocks = renderBlocks + 1;
-    i2s.write((uint8_t *)buf, sizeof(buf));
+    for (int i = 0; i < AUDIO_FRAMES * 2; i++) tx[i] = (int32_t)buf[i] << 16;
+    i2s.write((uint8_t *)tx, sizeof(tx));
   }
 }
 
@@ -160,16 +226,22 @@ void setup() {
   p.loadProject = loadProject;
   p.saveProject = saveProject;
   p.midiOut = midiOut;
+  p.sampleFrames = sampleFrames;
+  p.loadSample = loadSample;
+  p.saveSample = saveSample;
+  p.deleteSample = deleteSample;
   if (ESP.getPsramSize()) p.alloc = psAlloc;     // sample memory in PSRAM
-  if (!fsOk) Serial.println("flash storage FAILED: projects will not be saved");
+  if (!fsOk) Serial.println("flash storage FAILED: projects and samples will not be saved");
+  else Serial.printf("flash storage: %u KB used of %u KB\n", (unsigned)(LittleFS.usedBytes() >> 10), (unsigned)(LittleFS.totalBytes() >> 10));
   app.begin(p);                                  // renders the built-in kit (~1 s), restores the autosave
   midi_io::begin("XO-Hugbox");                   // USB MIDI class + BLE MIDI service
   USB.productName("XO-Hugbox");
   USB.manufacturerName("XOXO Audio Labs");
   USB.begin();                                   // TinyUSB: serial port + MIDI port
 
-  i2s.setPins(PIN_I2S_BCK, PIN_I2S_LRCK, PIN_I2S_DOUT);
-  if (!i2s.begin(I2S_MODE_STD, SAMPLE_RATE, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO))
+  i2s.setPins(PIN_I2S_BCK, PIN_I2S_LRCK, PIN_I2S_DOUT, PIN_I2S_DIN);   // full duplex: DAC + amp out, mic in
+  i2s.setTimeout(20);
+  if (!i2s.begin(I2S_MODE_STD, SAMPLE_RATE, I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_STEREO))
     Serial.println("I2S begin FAILED");
   xTaskCreatePinnedToCore(audioTask, "audio", 6144, nullptr, configMAX_PRIORITIES - 2, nullptr, 1);
   xTaskCreatePinnedToCore(uiTask, "ui", 8192, nullptr, 2, nullptr, 0);

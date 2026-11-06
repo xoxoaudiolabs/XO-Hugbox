@@ -63,6 +63,16 @@ const ParamDef PARAMS[P_COUNT] = {
   {"DCH", "Drum MIDI channel", 1, 16, 10, F_NUM},
   {"MUTD", "Mute drum track", 0, 1, 0, F_ONOFF},
   {"MUTS", "Mute synth track", 0, 1, 0, F_ONOFF},
+  {"GAIN", "Mic gain", 0, 40, 24, F_DB},
+  {"THRS", "Start threshold", 0, 100, 0, F_THR},
+  {"MON", "Mic monitor", 0, 1, 0, F_ONOFF},
+  {"STRT", "Sample start", 0, 127, 0, F_TRIM},
+  {"END", "Sample end", 0, 127, 127, F_TRIM},
+  {"FDIN", "Fade in", 0, 200, 0, F_FADE},
+  {"FDOU", "Fade out", 0, 200, 1, F_FADE},
+  {"NORM", "Normalise", 0, 1, 1, F_ONOFF},
+  {"REV", "Reverse", 0, 1, 0, F_ONOFF},
+  {"SRC", "Pad sound", 0, 1, 0, F_SRC},
 };
 
 const char *const DRUM_NAMES[16] = {"KCK", "SNR", "CLP", "CHH", "OHH", "TML", "TMH", "RIM",
@@ -140,7 +150,10 @@ struct Reader {
   int i16() { const int lo = u8(), hi = u8(); return (int16_t)(lo | (hi << 8)); }
 };
 constexpr uint8_t VERSION = 1;
-bool isSetting(int id) { return id == P_MCH || id == P_SYNC || id == P_BLE || id == P_BRT || id == P_DCH; }
+bool isSetting(int id) {
+  return id == P_MCH || id == P_SYNC || id == P_BLE || id == P_BRT || id == P_DCH ||
+         (id >= P_MGN && id <= P_MSRC);   // mic setup is per device, not per project
+}
 int clampTo(int id, int v) { return v < PARAMS[id].min ? PARAMS[id].min : v > PARAMS[id].max ? PARAMS[id].max : v; }
 }  // namespace
 

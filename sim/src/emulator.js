@@ -63,7 +63,13 @@
   // speaker grille
   for (let dx = -10; dx <= 10; dx += 4) for (let dy = -10; dy <= 10; dy += 4)
     if (dx * dx + dy * dy <= 100) el('circle', { cx: L.SPK_C[0] + dx, cy: Y(L.SPK_C[1] + dy), r: 1, fill: '#2b2b2b' });
-  el('circle', { cx: L.MIC_C[0], cy: Y(L.MIC_C[1]), r: L.MIC_HOLE / 2, fill: '#2b2b2b' });   // mic sound hole
+  // mic: the 1.5 mm sound hole over the INMP441, which sits label (port) side up in a pocket under the plate.
+  // The ring and the MIC note are the emulator's (like the other grey notes); the printed plate only has the hole.
+  const micG = el('g', {});
+  el('title', {}, micG).textContent = 'INMP441 mic: sound hole. Shift + hold REC opens SAMPLE.';
+  el('circle', { cx: L.MIC_C[0], cy: Y(L.MIC_C[1]), r: 2.2, fill: 'none', stroke: '#c9c2b2', 'stroke-width': 0.3, 'stroke-dasharray': '0.6 0.5' }, micG);
+  el('circle', { cx: L.MIC_C[0], cy: Y(L.MIC_C[1]), r: L.MIC_HOLE / 2, fill: '#2b2b2b' }, micG);
+  el('text', { x: L.MIC_C[0], y: Y(L.MIC_C[1]) + 4.8, 'font-size': 2.2, fill: '#7d7a72', 'text-anchor': 'middle' }, micG).textContent = 'MIC';
 
   // OLED: window in the plate, glass, then the 128x64 active area (29.42 x 14.7 mm on a 1.3" SH1106)
   const [ox, oy] = L.OLED_C;
@@ -136,7 +142,7 @@
   const fw = () => +$('fwSel').value;
   // shift legends, as they would be printed on the keycap fronts
   const SHIFT_LEGEND = ['PLAY', 'SEQ', 'SOUND', 'FX', 'PG 1', 'PG 2', 'PG 3', 'PG 4',
-                        'DRUM', 'SYNTH', 'RUN', 'REC', 'STD', 'CTL', 'LAYER', 'SET'];
+                        'DRUM', 'SYNTH', 'RUN', 'REC/SMP', 'STD', 'CTL', 'LAYER', 'SET'];
   function setLegends() {
     const main = fw() === 0;
     keyEls.forEach((k) => {
@@ -263,6 +269,79 @@
     if (midiInPort) midiInPort.onmidimessage = (ev) => midiToDevice([...ev.data].slice(0, 3));
   });
 
+  // ---------------- user samples (IndexedDB: localStorage is too small for audio) ----------------
+  // The core reads Module.userSamples (slot -> Int16Array) synchronously, like the board's flash, so they are all
+  // loaded before it starts; saves come back through onSampleSaved and go to IndexedDB in the background.
+  const userSamples = new Map();
+  let idb = null;
+  const samplesReady = new Promise((resolve) => {
+    try {
+      const rq = indexedDB.open('hugbox', 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore('samples');
+      rq.onerror = () => resolve();
+      rq.onsuccess = () => {
+        idb = rq.result;
+        const cur = idb.transaction('samples', 'readonly').objectStore('samples').openCursor();
+        cur.onsuccess = () => {
+          const c = cur.result;
+          if (c) { userSamples.set(+c.key, new Int16Array(c.value)); c.continue(); } else resolve();
+        };
+        cur.onerror = () => resolve();
+      };
+    } catch (e) { resolve(); }
+  });
+  function sampleSaved(slot, a) {
+    if (a) userSamples.set(slot, a); else userSamples.delete(slot);
+    try {
+      if (idb) { const st = idb.transaction('samples', 'readwrite').objectStore('samples'); if (a) st.put(a.buffer.slice(0), slot); else st.delete(slot); }
+    } catch (e) { log('[emulator] could not store the sample in this browser\n'); }
+    sampleState();
+  }
+  function sampleState() {
+    let n = 0, f = 0;
+    for (const a of userSamples.values()) { n++; f += a.length; }
+    $('smpState').textContent = (n ? `${n} recorded pad${n > 1 ? 's' : ''} · ${(f / 44100).toFixed(1)} of 52 s used` : 'no recorded samples yet') +
+      (idb ? '' : ' · this page can’t store them');
+  }
+  $('smpClear').addEventListener('click', () => {
+    if (!confirm('Delete every recorded sample in this browser? The pads go back to the built-in kit.')) return;
+    userSamples.clear();
+    try { if (idb) idb.transaction('samples', 'readwrite').objectStore('samples').clear(); } catch (e) {}
+    sampleState();
+    if (hw.power) boot();
+  });
+  samplesReady.then(sampleState);
+
+  // ---------------- mic (the computer's, standing in for the INMP441) ----------------
+  // -20 dB first: a laptop mic after the browser is much hotter than the INMP441 (-26 dBFS at 94 dB SPL), so the
+  // Hugbox's GAIN knob behaves about the same here as on the board.
+  const MIC_SCALE = 0.1;
+  let micOn = false, micStream = null, micSrc = null;
+  function micText() {
+    const st = core && hw.power && fw() === 0 ? core._hb_mic_state() : 0;
+    const what = ['', 'SAMPLE view open', 'waiting for sound', '● recording'][st];
+    $('micState').textContent = (micOn ? 'mic on' : 'mic off: takes record silence') + (what ? ' · ' + what : '');
+  }
+  $('micBtn').addEventListener('click', async () => {
+    if (micOn) {
+      micOn = false;
+      if (micSrc) micSrc.disconnect();
+      if (micStream) micStream.getTracks().forEach((t) => t.stop());
+      micSrc = micStream = null;
+      $('micBtn').textContent = 'Use mic';
+      return;
+    }
+    start();
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    } catch (e) { $('micState').textContent = 'mic access was not allowed'; return; }
+    micSrc = ac.createMediaStreamSource(micStream);
+    micSrc.connect(sp);
+    micOn = true;
+    $('micBtn').textContent = 'Stop mic';
+    log('[emulator] mic on: Shift + hold F (REC) opens SAMPLE, then hold a pad to record\n');
+  });
+
   // ---------------- projects (localStorage) ----------------
   function projectState() {
     let n = 0, auto = false;
@@ -283,7 +362,7 @@
   projectState();
 
   // ---------------- guide: live knob map ----------------
-  const VIEW_NAMES = ['PLAY', 'SEQ', 'SOUND', 'FX', 'SETTINGS'];
+  const VIEW_NAMES = ['PLAY', 'SEQ', 'SOUND', 'FX', 'SETTINGS', 'SAMPLE'];
   let guideKey = '', guideT = 0;
   function updateGuide() {
     const now = performance.now();
@@ -372,7 +451,9 @@
   async function boot() {
     // a reset re-instantiates the module: fresh statics, exactly like a power cycle
     core = null;
-    const c = await createHugboxCore({ onLog: log, onMidiOut: midiFromDevice, onProjectSaved: projectSaved });
+    await samplesReady;
+    const c = await createHugboxCore({ onLog: log, onMidiOut: midiFromDevice, onProjectSaved: projectSaved,
+      userSamples, onSampleSaved: sampleSaved });
     bootT0 = performance.now();
     hw.oledOk = !$('noOled').checked;
     hw.pcfOk = !$('noPcf').checked;
@@ -445,11 +526,16 @@
     try { ac = new AudioContext({ sampleRate: 44100 }); } catch (e) { ac = new AudioContext(); }
     // ScriptProcessor keeps everything on one thread with the WASM instance (works from file://).
     // 1024 frames = 8 firmware blocks of 128; latency ~23 ms on top of the browser's own.
-    sp = ac.createScriptProcessor(1024, 0, 2);
+    sp = ac.createScriptProcessor(1024, 1, 2);   // input: the mic, when it is on
     sp.onaudioprocess = (ev) => {
       audioBlocks++;
       const L0 = ev.outputBuffer.getChannelData(0), R0 = ev.outputBuffer.getChannelData(1);
       if (!core || !hw.power) { L0.fill(0); R0.fill(0); return; }
+      const mp = core._hb_mic_buf() >> 2, H32 = core.HEAP32;   // mic block first, as the board's audio task
+      if (micOn) {
+        const inp = ev.inputBuffer.getChannelData(0);
+        for (let i = 0; i < 1024; i++) H32[mp + i] = Math.round(Math.max(-1, Math.min(1, inp[i] * MIC_SCALE)) * 8388607);
+      } else H32.fill(0, mp, mp + 1024);
       const p = core._hb_render(1024) >> 1;
       const h = core.HEAP16;
       for (let i = 0; i < 1024; i++) { L0[i] = h[p + 2 * i] / 32768; R0[i] = h[p + 2 * i + 1] / 32768; }
@@ -565,7 +651,7 @@
   window.addEventListener('keydown', wake, true);
   function frame() {
     drawAudioStat();
-    drawOled(); drawScope(); drawStatus(); updatePadNotes(); updateGuide();
+    drawOled(); drawScope(); drawStatus(); updatePadNotes(); updateGuide(); micText();
     requestAnimationFrame(frame);
   }
 

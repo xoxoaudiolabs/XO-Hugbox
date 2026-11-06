@@ -18,6 +18,8 @@
 #define PIN_I2S_BCK   D6
 #define PIN_I2S_LRCK  D7
 #define PIN_I2S_DOUT  D8
+// INMP441 mic data: the XIAO's MTDI pad (GPIO41, underside) -> wire -> J_MTDI -> J_MIC SD. Not a header pin.
+#define PIN_I2S_DIN   41
 
 // Battery voltage: 100k/100k divider from the switched battery rail (Vbat = reading x 2)
 #define PIN_VBAT_SENSE D9

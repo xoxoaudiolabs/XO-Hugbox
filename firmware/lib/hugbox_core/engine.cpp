@@ -143,10 +143,12 @@ void Sampler::trigger(int pad, int vel, const Model &m, int semis) {
     for (int o = 0; o < 16; o++)
       if (o != pad && m.drum[o][P_D_CHOK - P_D_PTCH] == choke) v_[o].on = false;
   const int smp = P(P_D_SMPL) & 15;
-  if (!s_[smp].data) return;
+  const Sample &src = u_[smp].data ? u_[smp] : s_[smp];
+  if (!src.data || src.len < 2) return;
   Voice &v = v_[pad];
   v.on = true;
-  v.smp = smp;
+  v.data = src.data;
+  v.len = src.len;
   v.pos = 0;
   v.rate = powf(2.0f, (P(P_D_PTCH) + semis) / 12.0f);
   v.gain = (vel / 127.0f) * (P(P_D_LVL) / 100.0f);
@@ -154,7 +156,7 @@ void Sampler::trigger(int pad, int vel, const Model &m, int semis) {
   const int d = P(P_D_DCY);
   if (d >= 100) v.envK = 1.0f;
   else {                                       // shorten the natural tail: -60 dB at T
-    const float dur = s_[smp].len / FS / v.rate;
+    const float dur = src.len / FS / v.rate;
     const float x = d / 100.0f;
     const float T = 0.015f + x * x * dur;
     v.envK = expf(-6.9f / (T * FS));
@@ -169,17 +171,26 @@ void Sampler::trigger(int pad, int vel, const Model &m, int semis) {
 
 void Sampler::stopAll() { for (auto &v : v_) v.on = false; }
 
+const int16_t *Sampler::setUser(int i, const int16_t *data, uint32_t len) {
+  const int16_t *old = u_[i].data;
+  if (old)
+    for (auto &v : v_) if (v.on && v.data == old) v.on = false;
+  u_[i].data = data;
+  u_[i].len = data ? len : 0;
+  return old;
+}
+
 void Sampler::render(float *l, float *r, int n, const Model &m) {
   const float kit = m.value[P_KITV] / 100.0f * 0.8f;
   for (auto &v : v_) {
     if (!v.on) continue;
-    const Sample &s = s_[v.smp];
+    const int16_t *d = v.data;
     const float g = v.gain * kit;
     for (int i = 0; i < n; i++) {
       const uint32_t ip = (uint32_t)v.pos;
-      if (ip + 1 >= s.len) { v.on = false; break; }
+      if (ip + 1 >= v.len) { v.on = false; break; }
       const float f = v.pos - ip;
-      float x = (s.data[ip] + (s.data[ip + 1] - s.data[ip]) * f) * (1.0f / 32768.0f);
+      float x = (d[ip] + (d[ip + 1] - d[ip]) * f) * (1.0f / 32768.0f);
       if (v.filtered) x = v.flt.process(x);
       x *= g * v.env;
       v.env *= v.envK;

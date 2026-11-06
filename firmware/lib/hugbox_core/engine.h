@@ -53,20 +53,27 @@ class Sampler {
   void render(float *l, float *r, int n, const Model &m);
   const Sample &sample(int i) const { return s_[i]; }
   bool ready() const { return s_[0].data != nullptr; }
+  // User sample in slot i (recorded with the mic), played instead of the built-in sound; data = nullptr goes back
+  // to the kit. Audio core (or before audio starts). Voices still playing the old buffer stop; returns the old buffer
+  // so the caller can free it outside the audio core.
+  const int16_t *setUser(int i, const int16_t *data, uint32_t len);
+  bool hasUser(int i) const { return u_[i].data != nullptr; }
 
  private:
   struct Voice {
     bool on = false;
-    uint8_t smp = 0;
+    const int16_t *data = nullptr;
+    uint32_t len = 0;
     float pos = 0, rate = 1, gain = 0, env = 1, envK = 1, gl = 0.7f, gr = 0.7f;
     dsp::Svf flt;
     bool filtered = false;
   };
   Sample s_[16];
+  Sample u_[16];
   Voice v_[16];
 };
 
-// Built-in kit: 16 synthesized one-shots (kit.cpp). Placeholder until user samples load from flash.
+// Built-in kit: 16 synthesized one-shots (kit.cpp). Recorded user samples (Sampler::setUser) play in their place.
 size_t renderKit(Sample out[16], void *(*alloc)(size_t), void (*release)(void *));
 
 }  // namespace hugbox

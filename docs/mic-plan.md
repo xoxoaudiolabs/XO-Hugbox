@@ -2,7 +2,8 @@
 
 **Goal:** record your own sounds onto the pads with a built-in mic, keep them across power-offs, and play them
 like the built-in kit (pitch, decay, filter, sequencer, chords all apply).
-**Status:** board footprint and plate pocket done (v1 and v1.1), redone for the real module's 2×3 pins; firmware not written yet. The pads on the back of the XIAO have been checked: MTCK, MTDO, MTDI and
+**Status:** board footprint and plate pocket done (v1 and v1.1), redone for the real module's 2×3 pins;
+firmware done in code and in the emulator (section 4), not run on hardware yet; the pads on the back of the XIAO have been checked: MTCK, MTDO, MTDI and
 MTMS are there. The mic module is not ordered yet; it is a **new parts-list line** (INMP441 breakout, about $2.40 each in a 5-pack).
 
 ## 1. How it connects
@@ -58,44 +59,62 @@ is in copper; everything else only changes the plate.
 - **Measure when the module arrives:** row spacing (PCB), diameter and board thickness (plate). Those go in
   `layout.py` as `MIC_*`.
 
-## 4. Firmware
+## 4. Firmware (done in code; not run on hardware yet)
 
-**Board layer (`src/hugbox/main.cpp`, `pins.h`):**
-- `PIN_I2S_DIN 41`; `i2s.setPins(BCK, LRCK, DOUT, DIN)`; `I2S_DATA_BIT_WIDTH_32BIT`. The audio task converts
-  `render()`'s 16-bit output to 32-bit (`<< 16`), and reads one block of mic frames each loop.
-- v1.1 (`duali2s` path): add the RX channel to I2S0 in the same `i2s_std` setup.
-- Custom partition table: one app slot of 3 MB (no OTA; USB flashing) and **LittleFS of about 4.9 MB**. That is
-  about 55 s of 44.1 kHz/16-bit mono in total. **Changing partitions erases the saved projects once**: say so in
-  the release notes.
+**Board layer (`src/hugbox/main.cpp`, `pins.h`, `partitions_hugbox.csv`):**
+- `PIN_I2S_DIN 41`. I2S0 runs full duplex with 32-bit slots: the audio task reads a mic block (left slot, top 24 bits),
+  calls `app.micIn()`, renders, shifts the 16-bit mix into the top of each 32-bit slot and writes it.
+- v1.1's separate speaker stream (`duali2s` test) is not in the main firmware yet; when it is, it adds the RX side the
+  same way.
+- Partition table: one 3 MB app (no OTA; USB flashing) and **LittleFS of 4.9 MB**. User samples may use up to
+  ~52 s (4.6 MB) in total, which leaves room for the projects and for rewriting a slot. **Changing partitions erases
+  the saved projects once**: say so in the release notes.
+- Sample files `/s<slot>.hus`: "HUGS", version 1, rate, frame count (16 bytes), then 16-bit mono at 44.1 kHz.
+  Temp file + rename like the projects (or old file first when the flash is nearly full).
 
-**Core (`lib/hugbox_core`, shared with the emulator):**
-- `App::micIn(const int16_t *mono, int frames)`: called by the audio task before `render()`, same block.
-- Input chain: left slot, top 24 bits → gain (`MGN`, 0 to +30 dB; the INMP441 is quiet, -26 dBFS at 94 dB SPL)
+**Core (`lib/hugbox_core/mic.cpp`, shared with the emulator):**
+- `App::micIn(const int32_t *mono24, int frames)`: the audio core, before `render()`, same block.
+- Input chain: gain (`GAIN`, 0 to +40 dB, default +24; the INMP441 is quiet, -26 dBFS at 94 dB SPL)
   → 20 Hz DC-blocking high-pass → 16-bit.
-- Recorder (audio core): one buffer in PSRAM, **20 s max** (1.76 MB), a 50 ms pre-roll ring so the attack is never
-  cut. Ends with auto-trim: start at the threshold minus the pre-roll, cut trailing silence, 5 ms fades, peak-normalise
-  to -1 dBFS (optional, on by default).
-- `Sampler`: a pad can hold a user sample instead of its built-in kit sound. The kit stays in memory, so clearing
-  a user sample brings the original back.
-- `Platform`: `loadSample(pad, buf, max)`, `saveSample(pad, data, frames)`, `deleteSample(pad)`. File
-  `/s<pad>.hus`: header "HUGS", version, frame count, name; then 16-bit mono at 44.1 kHz.
-- Samples are global (a user kit), not per project. Projects keep pointing at pads, so the project format does not change.
+- Recorder (audio core): one 20 s buffer in PSRAM (1.76 MB), allocated the first time SAMPLE opens, and a
+  **300 ms pre-roll** ring. A pad press only arms a take after 250 ms (a shorter press is a tap: select and play);
+  the pre-roll covers that delay, so the attack is never cut. With a threshold, the take starts when the input
+  crosses it (or at once if the pre-roll already did).
+- **Sample editor: a port of XOXO Studio's** (`fm1-bt-bridge/sampler.py` + `sampleui.py`), so a sample comes out
+  the way the Studio would make it:
+  - opening selection: the first sound to the last, "sound" being over -30 dB under the peak or -45 dBFS, from
+    5 ms before to 50 ms after;
+  - fade in (default 0) and fade out (default 10 ms), linear, 10 ms steps up to 2 s;
+  - normalise to -6 dBFS (on by default, room for the pads to mix), reverse;
+  - the screen: the take's waveform across the 128 columns, the selection between two markers, dotted outside it,
+    a flag on the marker being moved. START and END move one column per step, like the Studio's arrow keys.
+  - Not ported: the Studio's Note field (a root note for keyboard playback). Hugbox pads are tuned with PTCH.
+- Editing a pad that already has a sample opens a copy of it (all of it selected, nothing applied); the raw take of
+  another pad is then gone. Each change re-renders the pad's sample from the source, so nothing compounds.
+- `Sampler`: a slot can hold a user sample instead of its built-in sound; the kit stays in memory, so SRC = KIT brings
+  it back. New buffers reach the audio core through the event queue; replaced ones come back on a small queue and
+  are freed on the control core.
+- `Platform`: `sampleFrames(slot)`, `loadSample(slot, buf, max)`, `saveSample(slot, data, frames)`,
+  `deleteSample(slot)`.
+- Samples are global (a user kit), not per project; the project format is unchanged apart from the new settings.
 
 **UI (keeps the rules: holding Shift never changes the screen, knob pick-up):**
-- **Opening the SAMPLE view:** **Shift + REC held for 0.6 s**. A quick tap is still sequencer record, as now. The
-  shortcut map shows "REC / hold: SAMPLE".
-- **Screen:** an input level meter with the threshold line, the target pad, and the length used/free.
-- **Knobs:** 1 input gain, 2 threshold (OFF = start on press), 3 trim start, 4 trim end (after a take).
-  Shift-knobs: normalise on/off, monitor on/off.
-- **Record:** **hold a pad**. Recording starts on press (or at the threshold) and stops on release, or at 20 s.
-  The take plays back once at once. Hold the same pad again to retake.
-- **Save and revert:** saving writes to flash when you leave the view, or with Shift + the pad. The CLR cell in the
-  SAMPLE view reverts a pad to its built-in sound.
-- **Speaker:** muted while recording to avoid feedback. Headphones keep monitoring.
-- **Names:** the DRUM page shows user samples as `U01`–`U16` in place of the kit names.
+- **Opening SAMPLE:** **Shift + REC held for 0.6 s** (the shortcut map shows REC/SMP). A quick tap is still sequencer
+  record. Choosing DRUM/SYNTH from SAMPLE jumps to PLAY, like FX and SETTINGS.
+- **Record:** **hold a pad**; release stops, 20 s at most. The take is trimmed, plays back once, and the pad shows
+  `U01`–`U16` everywhere (PLAY, SEQ, SOUND, the pad grid). A tap selects a pad and plays it.
+- **Screens:** the recorder (free time, pad, state, input meter with the threshold mark, pad grid with recorded pads
+  filled) while nothing is selected or a pad is held, and while GAIN was turned in the last 1.5 s; otherwise the editor.
+- **Knobs:** 1 STRT, 2 END, 3 FDIN, 4 FDOU | Shift: GAIN, NORM, REV, SRC (USER/KIT: turn to KIT to revert the pad; back to USER undoes it while you are still in the view).
+  On SETTINGS, Shift: THRS (start threshold, OFF = start on the press) and MON (mic monitor).
+- **Saving:** on leaving the view: the output mutes, "SAVING SAMPLES" shows, then the files are written.
+- **Output while recording:** the instrument is muted during a take (so the speaker doesn't feed the mic); with MON on
+  the mic is heard. On board v1 the speaker and jack share one stream, so use MON with headphones only.
 
-**Emulator:** the browser mic through `getUserMedia` → `hb_mic_in`, with a "Use mic" button (it needs permission).
-Samples go in IndexedDB, since localStorage is too small. You can try the whole feature before the module arrives.
+**Emulator:** the computer's mic through `getUserMedia` ("Use mic" in the Mic · samples card), turned down 20 dB to
+behave like the INMP441, fed to `micIn()` block by block like the board. Samples go in IndexedDB. The faceplate drawing
+marks the mic hole. `node sim/tools/sample_test.js` runs the whole flow headless (open, record a tone, trim, save,
+reload) and checks it.
 
 ## 5. Validate (with the v1.1 breadboard test, before the PCB order)
 
@@ -109,12 +128,12 @@ and print the peak/RMS levels and the noise floor.
 ## Risks / unknowns
 
 - **Flash writes pause the audio.** On the ESP32-S3, writing flash briefly disables the cache that PSRAM also
-  uses, so the audio task stalls. Plan: save only on leaving the SAMPLE view or on Shift + pad, mute for the
-  write, and show "SAVING…". About 2 s for a 10 s sample. The test measures this.
+  uses, so the audio task stalls. The firmware saves only on leaving the SAMPLE view, mutes first and shows
+  "SAVING SAMPLES". Expect about 2 s for a 10 s sample. The test measures this.
 - **Plate acoustics:** a small cavity behind a pinhole can ring. The foam ring and a short, wide hole keep it down.
   It's a reprint if it sounds boxy.
 - **Pad noise:** key clicks travel through the plate into the mic. Starting on the threshold, plus the pre-roll,
   helps. Recording on release is an option if it's bad.
-- **PSRAM budget:** kit 0.8 MB + recorder 1.76 MB + user samples up to 4.9 MB = 7.5 of 8 MB. The cap is the flash
-  size, so they can't all overflow at once.
+- **PSRAM budget:** kit 0.8 MB + recorder 1.76 MB + user samples up to 4.6 MB + delay = about 7.4 of 8 MB. The cap
+  is the flash budget, so they can't overflow it.
 - **Sound quality:** 61 dB SNR is fine for lo-fi sampling, not for hi-fi.

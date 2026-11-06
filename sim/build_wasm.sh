@@ -23,10 +23,10 @@ for c in "$U8G2"/clib/u8g2_*.c "$U8G2"/clib/u8x8_*.c "$U8G2"/clib/u8log*.c; do
   [ "$o" -nt "$c" ] || emcc -O2 -c "$c" -I"$U8G2/clib" -o "$o"
 done
 emcc -O2 -std=c++17 -Wall -I"$U8G2" -I"$U8G2/clib" -I"$CORE" \
-  "$CORE"/bringup_app.cpp "$CORE"/model.cpp "$CORE"/main_app.cpp "$CORE"/engine.cpp "$CORE"/kit.cpp "$CORE"/fx.cpp "$CORE"/io.cpp \
+  "$CORE"/bringup_app.cpp "$CORE"/model.cpp "$CORE"/main_app.cpp "$CORE"/engine.cpp "$CORE"/kit.cpp "$CORE"/fx.cpp "$CORE"/io.cpp "$CORE"/mic.cpp \
   wasm_main.cpp "${objs[@]}" \
   -o src/hugbox_core.js \
   -sSINGLE_FILE=1 -sMODULARIZE=1 -sEXPORT_NAME=createHugboxCore -sENVIRONMENT=web,node \
-  -sEXPORTED_FUNCTIONS=_hb_init,_hb_set_inputs,_hb_loop,_hb_render,_hb_panel,_hb_frames,_hb_tone_hz,_hb_tone_gain,_hb_app,_hb_status,_hb_brightness,_hb_set_param,_hb_param,_hb_pad_note,_hb_knob_param,_hb_param_label,_hb_param_name,_hb_param_text,_hb_view,_hb_track,_hb_midi_in \
-  -sEXPORTED_RUNTIME_METHODS=UTF8ToString -sINITIAL_MEMORY=16777216 -sTOTAL_STACK=65536
+  -sEXPORTED_FUNCTIONS=_hb_init,_hb_set_inputs,_hb_loop,_hb_render,_hb_panel,_hb_frames,_hb_tone_hz,_hb_tone_gain,_hb_app,_hb_status,_hb_brightness,_hb_set_param,_hb_param,_hb_pad_note,_hb_knob_param,_hb_param_label,_hb_param_name,_hb_param_text,_hb_view,_hb_track,_hb_midi_in,_hb_mic_buf,_hb_mic_state,_hb_user_frames \
+  -sEXPORTED_RUNTIME_METHODS=UTF8ToString -sINITIAL_MEMORY=33554432 -sTOTAL_STACK=65536
 ls -l src/hugbox_core.js && python3 bundle.py src/index.html index.html

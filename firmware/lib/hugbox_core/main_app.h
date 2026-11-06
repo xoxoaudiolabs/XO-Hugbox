@@ -7,11 +7,14 @@
 //   shift double-tap  shortcut map on screen; tap a pad to run its shortcut (shift tap / knob / 5 s closes it)
 //   shift + pad       top row:    PLAY  SEQ  SOUND  FX       (SOUND again = next sound page)
 //                     row 2:      seq page 1..4
-//                     row 3:      DRUM track, SYNTH track, run/stop, record
+//                     row 3:      DRUM track, SYNTH track, run/stop, record (held 0.6 s: SAMPLE view)
 //                     bottom row: Standalone, Controller (MIDI only), Layered, Settings
 //   hold a step+knob  per-step velocity / pitch / gate / probability
 //   SETTINGS pads     S1-S8 tap = load, hold = save | copy / paste / clear page, clear track (hold) |
 //                     mute drums, mute synth, tap tempo, MIDI panic  (io.cpp)
+//   SAMPLE view       hold a pad = record the mic onto it (release stops, 20 s max), tap = select + play.
+//                     Sample editor (XOXO Studio's): start, end, fade in, fade out | gain, normalise, reverse,
+//                     pad sound (USER/KIT). Threshold + monitor are on the SETTINGS knobs. Saved on leaving.  (mic.cpp)
 #pragma once
 #include "hugbox_app.h"
 #include "engine.h"
@@ -27,6 +30,7 @@ class MainApp : public App {
   void begin(const Platform &p) override;
   void loop(uint32_t nowMs, const Inputs &in) override;
   void render(int16_t *stereo, int frames) override;
+  void micIn(const int32_t *mono, int frames) override;
 
   uint32_t frames() const { return frames_; }
   const char *status();   // one line for the emulator side panel
@@ -44,6 +48,15 @@ class MainApp : public App {
   int param(int id) const { return id >= 0 && id < P_COUNT ? getVal((uint8_t)id) : 0; }
   void midiIn(MidiSource src, const uint8_t *msg, int len) override;
   bool bleWanted() const { return m_.value[P_BLE] != 0; }
+  // 0 = mic idle, 1 = SAMPLE view open, 2 = waiting for the threshold, 3 = recording (emulator faceplate light)
+  int micState() const { return view_ != V_SMP ? 0 : recState_ == R_REC ? 3 : recState_ == R_ARMED ? 2 : 1; }
+  uint32_t userFrames(int slot) const { return slot >= 0 && slot < 16 ? userFrames_[slot] : 0; }
+
+  // Recorder limits: one take up to 20 s; all user samples together up to ~52 s (4.6 MB: the 4.9 MB flash partition
+  // less the projects, LittleFS's own blocks and room to rewrite a slot).
+  static constexpr uint32_t TAKE_MAX = SAMPLE_RATE * 20;
+  static constexpr uint32_t USER_MAX = 2300000;
+  static constexpr int PREROLL = SAMPLE_RATE * 3 / 10;   // 300 ms kept from before the start (covers the hold delay)
 
  private:
   // ---- control core ----
@@ -60,6 +73,7 @@ class MainApp : public App {
   void toast(const char *msg, uint32_t now);
   void logf(const char *fmt, ...);
   int synthNoteForPad(int pad) const;
+  const char *voiceName(int v) const;   // kit name, or U01..U16 when the voice plays a recorded sample
 
   // ---- display ----
   void draw(uint32_t now);
@@ -73,6 +87,68 @@ class MainApp : public App {
   void drawShiftMap();
   void drawToast();
   void drawSettings(uint32_t now);
+  void drawSample(uint32_t now);
+
+  // ---- mic sampling + sample editor (mic.cpp) ----
+  enum RecState : uint8_t { R_IDLE, R_ARMED, R_REC, R_DONE };
+  void loadUserSamples();
+  void openSample(uint32_t now);
+  void sampleLoop(uint32_t now);
+  void samplePadDown(int pad, uint32_t now);
+  void samplePadUp(int pad, uint32_t now);
+  void finishTake(uint32_t now);
+  bool loadSource(int slot);
+  void makeWave();
+  bool buildSample(uint32_t now);
+  void installSample(int slot, int16_t *data, uint32_t frames);
+  void saveSamples();
+  bool editorShown(uint32_t now) const;
+  int editGet(uint8_t id) const;
+  void editSet(uint8_t id, int v);
+  void drawEditor(uint32_t now);
+  int selSlot() const { return m_.drum[m_.value[P_SPAD]][P_D_SMPL - P_D_PTCH] & 15; }
+  bool takeHere() const { return ed_.len && ed_.slot == selSlot(); }
+  // recorder (audio core owns recState_; the control core only raises the request flags)
+  int16_t *recBuf_ = nullptr;          // TAKE_MAX frames: the take, later the sample editor's source
+  volatile uint8_t recState_ = R_IDLE;
+  volatile bool recArm_ = false, recStop_ = false, recCancel_ = false, recAck_ = false;
+  volatile uint32_t recLen_ = 0;
+  int16_t pre_[PREROLL];               // pre-roll ring (audio core)
+  uint32_t preHead_ = 0, preFill_ = 0;
+  float hpX_ = 0, hpY_ = 0;            // 20 Hz DC blocker
+  float mon_[AUDIO_FRAMES] = {};       // this block's mic signal, for the monitor
+  volatile bool monValid_ = false;
+  volatile float micPeak_ = 0;         // peak since the screen last looked, 0..1 after the gain
+  float meter_ = 0;
+  int recPad_ = -1, recSlot_ = 0;
+  bool recArmed_ = false;
+  uint32_t recPadMs_ = 0;
+  // the sample editor (a port of XOXO Studio's): the source (a fresh take, or a copy of the pad's sample) in recBuf_
+  struct Edit {
+    uint32_t len = 0;                  // source frames, 0 = none
+    int slot = -1;                     // sample slot it belongs to
+    uint32_t start = 0, end = 0;       // selection, frames
+    int fadeIn = 0, fadeOut = 1;       // x 10 ms
+    bool norm = true, rev = false;
+  } ed_;
+  int8_t wave_[128][2] = {};           // (low, high) per OLED column, +-60
+  bool rebuild_ = false;
+  uint32_t rebuildMs_ = 0, gainMs_ = 0;
+  // user samples: control-core copy of what the sampler holds
+  uint32_t userFrames_[16] = {};
+  int16_t *userData_[16] = {};
+  bool userDirty_[16] = {};            // changed since the last save
+  char userName_[16][4] = {};
+  bool recHold_ = false;               // Shift + REC down: a tap = record arm, held = SAMPLE view
+  uint32_t recHoldMs_ = 0;
+  int lastView_ = V_PLAY;
+  uint32_t saveAtMs_ = 0;              // > 0: write the user samples then (the output is muted first)
+  volatile bool muteOut_ = false;
+  // new sample buffers to the audio core, replaced ones back for freeing
+  const int16_t *newData_[16] = {};
+  uint32_t newLen_[16] = {};
+  const int16_t *retired_[32] = {};
+  volatile uint8_t retHead_ = 0, retTail_ = 0;
 
   // ---- projects + SETTINGS grid (io.cpp) ----
   uint32_t modelHash() const;
@@ -118,9 +194,9 @@ class MainApp : public App {
 
   // ---- audio core ----
   struct Event { uint8_t type, a, b; };
-  enum { E_DRUM, E_NOTE_ON, E_NOTE_OFF, E_ALL_OFF, E_ARP_ADD, E_ARP_DEL, E_ARP_CLEAR, E_EXT_STEP };
+  enum { E_DRUM, E_NOTE_ON, E_NOTE_OFF, E_ALL_OFF, E_ARP_ADD, E_ARP_DEL, E_ARP_CLEAR, E_EXT_STEP, E_SMP_SET };
   void arpStep();
-  void post(uint8_t type, uint8_t a = 0, uint8_t b = 0);
+  bool post(uint8_t type, uint8_t a = 0, uint8_t b = 0);
   void hitDrum(int voice, int vel, int semis = 0);
   bool chance(int prob);
   void stepTick();

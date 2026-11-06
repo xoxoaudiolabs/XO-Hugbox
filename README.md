@@ -16,7 +16,8 @@ Play it on its own, or use it as a USB/Bluetooth MIDI companion for XOXO Studio 
 
 ## What it does
 
-- **Drums:** 16 sample pads with pitch, decay, filter, level, pan and choke groups. A built-in kit is generated at boot; loading your own samples comes later.
+- **Drums:** 16 sample pads with pitch, decay, filter, level, pan and choke groups. A built-in kit is generated at boot.
+- **Sampling:** a built-in mic. Hold a pad to record onto it, then trim, fade, normalise or reverse it in the same sample editor as XOXO Studio. Samples are kept on the flash.
 - **Synth:** 6 voices, two oscillators (saw, square, sine, noise), 2-operator FM, a resonant filter with its own envelope, ADSR, analog-style drift and glide.
 - **Chords and arpeggiator:** chords built from the scale (5th, triad, 7th, sus2, sus4, with inversions); the arp does up/down/up-down/random/as-played, 1/4 to 1/32 including triplets, 1–3 octaves, with latch.
 - **Sequencer:** 16 steps × 4 pages = 64 steps, swing, live recording, and per-step velocity, pitch, gate and probability.
@@ -104,7 +105,7 @@ docs/
 4. ✅ FX
 5. ✅ USB + BLE MIDI
 6. ⬜ Bring-up on real hardware, then order the PCB (v1 or v1.1)
-7. ⬜ User samples from flash
+7. ✅ Mic sampling + user samples on flash (in code and the emulator; not on hardware yet)
 
 ## Contributing
 

@@ -6,12 +6,13 @@
 
 namespace hugbox {
 
-enum View : uint8_t { V_PLAY, V_SEQ, V_SOUND, V_FX, V_SET, V_COUNT };
+enum View : uint8_t { V_PLAY, V_SEQ, V_SOUND, V_FX, V_SET, V_SMP, V_COUNT };   // V_SMP: mic sampling (Shift + REC held)
 enum Track : uint8_t { T_DRUM, T_SYNTH };
 enum Mode : uint8_t { M_STD, M_CTL, M_LAY };   // Standalone, Controller (MIDI only), Layered (both)
 
 enum Fmt : uint8_t { F_NUM, F_PCT, F_WAVE, F_SCALE, F_NOTE, F_ONOFF, F_SYNC, F_SIGNED, F_PAN, F_LEN, F_PAD, F_BITS,
-                     F_SEMI, F_MS, F_RATIO, F_CHORD, F_ARP, F_ARPRATE, F_DIV, F_HZ };
+                     F_SEMI, F_MS, F_RATIO, F_CHORD, F_ARP, F_ARPRATE, F_DIV, F_HZ,
+                     F_DB, F_THR, F_TRIM, F_FADE, F_SRC };
 
 // ---- parameter ids ----
 enum ParamId : uint8_t {
@@ -34,6 +35,9 @@ enum ParamId : uint8_t {
   P_MCH, P_SYNC, P_BLE, P_BRT,
   P_DCH,                         // drum MIDI channel
   P_MUTD, P_MUTS,                // sequencer track mutes (no knob; SETTINGS pad grid)
+  // mic sampling: gain, start threshold, monitor (device settings), then the sample editor's fields, which act on
+  // the selected pad's sample (their values live in MainApp's edit, not here; see mic.cpp)
+  P_MGN, P_MTHR, P_MMON, P_MTST, P_MTEN, P_MFIN, P_MFOU, P_MNRM, P_MREV, P_MSRC,
   P_COUNT,
   P_NONE = 0xFF
 };

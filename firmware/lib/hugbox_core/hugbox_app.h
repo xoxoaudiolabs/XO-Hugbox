@@ -5,7 +5,7 @@
 // hardware: it scans the PCF8574 matrix, reads the ADC pins, owns the I2S/WebAudio output and the
 // U8g2 display object, and calls the app.
 //
-//   firmware:  loop() -> app.loop(millis(), inputs);  audio task -> app.render(buf, 128) -> i2s.write
+//   firmware:  loop() -> app.loop(millis(), inputs);  audio task -> i2s read -> app.micIn -> app.render(buf, 128) -> i2s.write
 //   emulator:  setInterval -> hb_loop(now);           ScriptProcessor -> hb_render(128) -> WebAudio
 //
 // Later apps (synth engine, sequencer, Standalone/Controller/Layered modes) implement the same
@@ -43,6 +43,13 @@ struct Platform {
   bool (*saveProject)(int slot, const uint8_t *buf, size_t len) = nullptr;
   // MIDI out: one complete message (1-3 bytes). The board sends it on USB and BLE. Control core only.
   void (*midiOut)(const uint8_t *msg, int len) = nullptr;
+  // User samples recorded with the mic: slot 0..15, mono 16-bit at 44.1 kHz. Flash (LittleFS, /s<slot>.hus) on the
+  // board, IndexedDB in the emulator. sampleFrames = 0 means the slot has none. Control core only. On the board a save
+  // stalls the audio task (flash writes pause PSRAM), so the app mutes the output first.
+  uint32_t (*sampleFrames)(int slot) = nullptr;
+  uint32_t (*loadSample)(int slot, int16_t *buf, uint32_t maxFrames) = nullptr;
+  bool (*saveSample)(int slot, const int16_t *data, uint32_t frames) = nullptr;
+  void (*deleteSample)(int slot) = nullptr;
 };
 
 enum MidiSource : uint8_t { MIDI_SRC_USB = 0, MIDI_SRC_BLE = 1 };
@@ -53,6 +60,9 @@ class App {
   virtual void begin(const Platform &p) = 0;
   virtual void loop(uint32_t nowMs, const Inputs &in) = 0;   // control core, call as often as possible
   virtual void render(int16_t *stereo, int frames) = 0;      // audio core, interleaved L/R
+  // Mic block (INMP441, left slot): signed 24-bit samples, the same frames as the render() call that follows.
+  // Audio core, called just before render().
+  virtual void micIn(const int32_t *, int) {}
   // One incoming MIDI message (control core). Realtime bytes (clock, start, stop) arrive as len 1.
   virtual void midiIn(MidiSource, const uint8_t *, int) {}
 };

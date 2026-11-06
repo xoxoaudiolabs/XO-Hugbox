@@ -10,10 +10,13 @@ Read first: [README.md](README.md), [docs/hardware.md](docs/hardware.md), [docs/
 - Hardware design complete, nothing built yet. Board v1 gerbers are the order candidate; v1.1 (separate speaker data
   line) waits on the breadboard test in [docs/speaker-path-plan.md](docs/speaker-path-plan.md).
 - Firmware stages done in code: UI, synth + sampler, projects/sequencer extras, FX, USB + BLE MIDI. None run on hardware.
-- Both boards carry pads for an INMP441 mic (J_MIC, plus J_MTDI for a wire from the XIAO's GPIO41 pad); the plate has
-  its pocket. Mic firmware is not written yet: see [docs/mic-plan.md](docs/mic-plan.md).
-- Next: bring-up on real parts (check the "audio load" serial line first), the v1.1 + mic breadboard test, then
-  mic recording and user samples from flash.
+- Both boards carry a 2×3 J_MIC footprint for the INMP441 (label side up on its header, under the plate's sound hole)
+  plus J_MTDI for a wire from the XIAO's GPIO41 pad. Mic sampling + the sample editor (ported from XOXO Studio) are
+  done in code and the emulator (`lib/hugbox_core/mic.cpp`), not on hardware: see [docs/mic-plan.md](docs/mic-plan.md).
+  The firmware uses a custom partition table (first flash erases LittleFS once).
+- Next: measure the mic module's pin-row spacing (it is in copper), bring-up on real parts (check the "audio load"
+  serial line first), then the v1.1 + mic breadboard test.
+- Emulator check: `node sim/tools/sample_test.js` (after `sim/build_wasm.sh`).
 
 ## Rules of the road
 
