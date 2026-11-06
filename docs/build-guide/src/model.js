@@ -446,7 +446,7 @@ function buildModel(STEP) {
   // ---- INMP441 mic: label (port) side up on its own header, straight above J_MIC; the plate pocket closes over it.
   //      The can is underneath, facing the board; the header plastic is the 2.5 mm spacer. MTDI wire on the back.
   {
-    const p = part('mic', { name: 'INMP441 I2S mic module', step: STEP.underplate, explode: 50, refs: ['J_MIC'],
+    const p = part('mic', { name: 'INMP441 I2S mic module', step: STEP.mic, explode: 50, refs: ['J_MIC'],
       info: 'Label side up (the sound port is the hole in the middle of that side), on a 2×3 header into J_MIC: SCK WS L/R toward the knobs, SD VDD GND toward the keys. L/R is tied to GND, so the mic sends on the left slot.' });
     const [mx, my] = L.MIC_C, R = L.MIC_D / 2, z0 = Z.pcbTop + L.MIC_SPACER;
     p.cylZ(R, L.MIC_PCB_T, '#1c1f26', mx, my, z0, 48);                                   // module board

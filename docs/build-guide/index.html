@@ -586,7 +586,7 @@ function buildModel(STEP) {
   // ---- INMP441 mic: label (port) side up on its own header, straight above J_MIC; the plate pocket closes over it.
   //      The can is underneath, facing the board; the header plastic is the 2.5 mm spacer. MTDI wire on the back.
   {
-    const p = part('mic', { name: 'INMP441 I2S mic module', step: STEP.underplate, explode: 50, refs: ['J_MIC'],
+    const p = part('mic', { name: 'INMP441 I2S mic module', step: STEP.mic, explode: 50, refs: ['J_MIC'],
       info: 'Label side up (the sound port is the hole in the middle of that side), on a 2×3 header into J_MIC: SCK WS L/R toward the knobs, SD VDD GND toward the keys. L/R is tied to GND, so the mic sends on the left slot.' });
     const [mx, my] = L.MIC_C, R = L.MIC_D / 2, z0 = Z.pcbTop + L.MIC_SPACER;
     p.cylZ(R, L.MIC_PCB_T, '#1c1f26', mx, my, z0, 48);                                   // module board
@@ -676,10 +676,11 @@ return { L, PCB, FP, Z, PADNAMES, parts, root, buildModel };
 <script>/* steps.js */
 // XO-Hugbox build guide content: parts list and steps.
 // Order follows the assembly order in docs/hardware.md. Two steps explain why parts go in earlier or later
-// than you might expect (pots/OLED/power switch before the plate; PCM5102A after the switch pins are clipped).
+// than you might expect (mic before the PCF8574T; pots/OLED/power switch before the plate; PCM5102A after the
+// switch pins are clipped).
 window.HUGBOX_GUIDE = (() => {
-  const STEP = { diodes: 1, xiao: 2, max: 3, pcf: 4, switches: 5, underplate: 6, plate: 7, pcm: 8,
-    speaker: 9, battery: 10, close: 11, caps: 12, poweron: 13 };
+  const STEP = { diodes: 1, xiao: 2, max: 3, mic: 4, pcf: 5, switches: 6, underplate: 7, plate: 8, pcm: 9,
+    speaker: 10, battery: 11, close: 12, caps: 13, poweron: 14 };
 
   // camera presets: [position], [target] in plate mm (z up)
   const V = {
@@ -688,6 +689,7 @@ window.HUGBOX_GUIDE = (() => {
     keysBack: [[50, -25, -115], [46, 46, 14]],
     xiao: [[-5, 35, -70], [16, 88, 12]],
     max: [[38, 30, -75], [34, 90, 12]],
+    mic: [[52, 30, 95], [52, 94, 18]],
     pcf: [[75, 30, -80], [66, 94, 12]],
     pcm: [[125, 105, -55], [78, 148, 13]],
     plateAbove: [[150, -75, 140], [46, 84, 45]],
@@ -740,9 +742,10 @@ window.HUGBOX_GUIDE = (() => {
         <h3>Parts list</h3>
         <table class="bom"><tr><th>Part</th><th>Qty</th><th>Notes</th></tr>
         ${BOM.map(([a, q, n]) => `<tr><td>${a}</td><td class="q">${q}</td><td>${n}</td></tr>`).join('')}</table>
-        <div class="callout fix"><b>Two things to know about the order.</b> The pots, OLED and power switch sit <i>under</i> the plate,
-        so they go in before the plate (step 6). The shift and power switch pins are <i>under</i> the PCM5102A, so that module goes on
-        after them (step 8).</div>`,
+        <div class="callout fix"><b>Three things to know about the order.</b> The mic's pins come through the board <i>under</i> the
+        PCF8574T module, so the mic goes in before that module (step 4). The pots, OLED and power switch sit <i>under</i> the plate,
+        so they go in before the plate (step 7). The shift and power switch pins are <i>under</i> the PCM5102A, so that module goes on
+        after them (step 9).</div>`,
     },
     {
       title: 'Diodes and divider resistors (back)', view: V.keysBack, focus: ['diodes', 'resistors'],
@@ -752,7 +755,7 @@ window.HUGBOX_GUIDE = (() => {
           <li><b>16× 1N4148</b> at D1–D16, one under each pad. Bend the leads to 7.62 mm.</li>
           <li><b>2× 100 kΩ</b> at R1 and R2 (brown-black-yellow), the battery-sense divider into D9.</li>
           <li>Solder on the top side and clip the leads <b>flush</b> - the plate sits only 1 mm above the top.
-          <b>Keep 12 of the clipped leads</b>: they become the pot wire legs in step 6.</li>
+          <b>Keep 12 of the clipped leads</b>: they become the pot wire legs in step 7.</li>
         </ol>
         <div class="callout warn"><b>Diode polarity:</b> the black band (cathode) goes to the <b>square pad</b>.
         The square pad is the row line (R0–R3); the round pad goes to the switch. A reversed diode makes that pad dead.</div>`,
@@ -769,7 +772,7 @@ window.HUGBOX_GUIDE = (() => {
           <li>Component side (shield can) faces the <b>floor</b>, USB-C toward the <b>left wall</b>.</li>
           <li>Use the header strips with their plastic between the boards (2.5 mm). Pins D0–D6 are the row nearest the pots,
           5V/GND/3V3/D10–D7 the row nearest the keys - match the silk.</li>
-          <li>Solder the BAT leads to J13 (+ to +) and the MTDI wire to J_MTDI. Keep the U.FL antenna for step 10.</li>
+          <li>Solder the BAT leads to J13 (+ to +) and the MTDI wire to J_MTDI. Keep the U.FL antenna for step 11.</li>
         </ol>`,
     },
     {
@@ -780,6 +783,23 @@ window.HUGBOX_GUIDE = (() => {
           so the <b>printed side faces the floor</b>.</li>
           <li><b>GAIN floating</b> = 9 dB. <b>SD</b> left at its default (on, L+R mono). Nothing to wire on those two pins.</li>
           <li>Solder ~8 cm speaker leads to the module's <b>+ / −</b> now; the speaker sits in the top-left corner of the shell.</li>
+        </ol>`,
+    },
+    {
+      title: 'INMP441 mic (top, before the PCF8574T)', view: V.mic, focus: ['mic'],
+      body: `
+        <div class="callout fix"><b>Why now:</b> J_MIC's six pins come through the board right where the PCF8574T module sits on the
+        back. Once that module is on you can't reach them, so the mic is soldered first. It sits under the plate's mic pocket,
+        which clears it, so the plate can go on later as normal.</div>
+        <ol>
+          <li>The mic listens through the small hole in the <b>middle of its label side</b> (the mic can is on the other side),
+          so it goes in <b>label side up</b>.</li>
+          <li>On the bench, cut its header strip into two 3-pin pieces, push the <b>short</b> ends up through the module from the
+          can side (plastic on the can side), solder them on the label side and clip them <b>flush</b>, keeping the joints low.
+          Stick a small ring of thin foam tape around the port hole.</li>
+          <li>Set the long ends into <b>J_MIC</b> from the <b>top</b>: <b>SCK WS L/R toward the knobs, SD VDD GND toward the keys</b>,
+          matching the board labels (it only fits one way round). The header plastic sits flat on the board and sets the height.</li>
+          <li>Solder the six pins on the back and <b>clip them flush</b>: the PCF8574T module goes right over them next.</li>
         </ol>`,
     },
     {
@@ -796,7 +816,9 @@ window.HUGBOX_GUIDE = (() => {
           VCC→V, GND→G, SDA→D, SCL→C. Check the labels on your module - pin order varies between batches.</li>
         </ol>
         <div class="callout fix"><b>Not the PCM5102A yet.</b> Leave it off for now: the shift and power-switch pins come through
-        the board right where it sits (step 8).</div>`,
+        the board right where it sits (step 9).</div>
+        <div class="callout warn"><b>Mic first.</b> The mic (step 4) must already be soldered and its pins clipped flush: they are
+        under this module.</div>`,
     },
     {
       title: 'Switches into the plate', view: V.plateAbove, focus: ['plate', 'switches'], offsets: { plate: 45, switches: 45 },
@@ -809,11 +831,11 @@ window.HUGBOX_GUIDE = (() => {
         </ol>`,
     },
     {
-      title: 'Pots, OLED, power switch and mic (top, before the plate)', view: V.underplate, focus: ['pots', 'oled', 'power', 'mic'],
+      title: 'Pots, OLED and power switch (top, before the plate)', view: V.underplate, focus: ['pots', 'oled', 'power'],
       ghost: ['plate', 'switches'], offsets: { plate: 45, switches: 45 },
       body: `
-        <div class="callout fix"><b>Before the plate:</b> all four sit <i>under</i> the plate (pot cans and lugs in the strip pockets,
-        OLED in its window pocket, switch body in its slot, mic in its pocket). Place them now, solder them in step 7.</div>
+        <div class="callout fix"><b>Before the plate:</b> all three sit <i>under</i> the plate (pot cans and lugs in the strip pockets,
+        OLED in its window pocket, switch body in its slot). Place them now, solder them in step 8.</div>
         <ol>
           <li><b>4× WH148 B10K</b>, straight-lug type: the lugs leave the side of the can about 5.3 mm up and are too short to
           bend down to the board. First, on the bench, solder a <b>diode lead offcut</b> to the tip of each lug, pointing straight
@@ -824,13 +846,6 @@ window.HUGBOX_GUIDE = (() => {
           (the firmware's <code>U8G2_R2</code> turns the picture back). Board pads read SDA SCL VCC GND left to right.
           It must end up <b>0.8 mm above the board</b> - the plate pocket sets that height in the next step.</li>
           <li><b>12D00G power switch</b>: three pins in, actuator up.</li>
-          <li><b>INMP441 mic</b>: it listens through the small hole in the <b>middle of its label side</b> (the mic can is on the
-          other side), so it goes in <b>label side up</b>. On the bench, cut its header strip into two 3-pin pieces, push the
-          <b>short</b> ends up through the module from the can side (plastic on the can side), solder them on the label side and
-          clip them <b>flush</b>, keeping the joints low. Stick a small ring of thin foam tape around the port hole.
-          Then set the long ends into <b>J_MIC</b>: <b>SCK WS L/R toward the knobs, SD VDD GND toward the keys</b>, matching the
-          board labels (it only fits one way round). The header plastic sits on the board and sets the height; the plate's
-          mic pocket closes over it.</li>
         </ol>`,
     },
     {
@@ -840,7 +855,7 @@ window.HUGBOX_GUIDE = (() => {
           <li>Put a <b>1 mm spacer</b> on each of the five screw holes.</li>
           <li>Lower plate + switches onto the board: every switch's pins through, pot shafts up through their holes,
           OLED glass into its window, slide actuator in its slot. Thread the pot nuts on loosely to hold the stack.</li>
-          <li>Flip it and solder: <b>17 switches</b>, then the <b>pot legs</b> (clip them flush afterwards), the <b>OLED</b> (check it is level and 0.8 mm up), the <b>power switch</b> and the six <b>mic pins</b> in J_MIC (clip them).</li>
+          <li>Flip it and solder: <b>17 switches</b>, then the <b>pot legs</b> (clip them flush afterwards), the <b>OLED</b> (check it is level and 0.8 mm up) and the <b>power switch</b>.</li>
         </ol>
         <div class="callout tip">Press each switch while it cools so it sits flat in the plate.</div>`,
     },

@@ -71,14 +71,16 @@ Follow the interactive 3D guide, [`docs/build-guide/index.html`](build-guide/ind
 1. Diodes and the divider resistors (back).
 2. XIAO (back): first solder ~4 cm battery leads to the XIAO's own BAT+/BAT- pads (unreachable once mounted), then mount it
    and run the leads to J13.
-3. MAX98357A, then the PCF8574T module (back).
-4. Switches snapped into the plate.
-5. Pots, OLED and power switch on top **before** the plate: they sit under it, and the plate pockets set the OLED height.
-6. Plate (with switches) onto the PCB over the spacers; solder the switches from below.
-7. Clip the pins under the PCM5102A area flush (shift and power switch), **then** fit the PCM5102A.
-8. Speaker onto the shell posts.
-9. LiPo into the cradle, leads to J11 from the back, power switch OFF, polarity checked. Plug in the antenna.
-10. Board and plate into the shell (4× M3×12), keycaps and knobs, then the first power-on with the bring-up firmware.
+3. MAX98357A (back).
+4. INMP441 mic on top in J_MIC, soldered and clipped flush **before** the PCF8574T: its pins come through under that module.
+5. PCF8574T module (back).
+6. Switches snapped into the plate.
+7. Pots, OLED and power switch on top **before** the plate: they sit under it, and the plate pockets set the OLED height.
+8. Plate (with switches) onto the PCB over the spacers; solder the switches from below.
+9. Clip the pins under the PCM5102A area flush (shift and power switch), **then** fit the PCM5102A.
+10. Speaker onto the shell posts.
+11. LiPo into the cradle, leads to J11 from the back, power switch OFF, polarity checked. Plug in the antenna.
+12. Board and plate into the shell (4× M3×12), keycaps and knobs, then the first power-on with the bring-up firmware.
 
 ## First power-on
 
