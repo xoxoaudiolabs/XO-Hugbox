@@ -837,21 +837,40 @@ else if (typeof exports === 'object')
     shiftEl.g.setAttribute('transform', s ? 'translate(0 0.5)' : '');
   }
 
-  // knobs: vertical drag or wheel; 300 degree travel, clockwise = higher (as wired on the PCB)
+  // knobs: drag (up or right = higher) or scroll; 300 degree travel, clockwise = higher (as wired on the PCB)
+  // Scrolling follows how far it moves, not how many events arrive: a trackpad sends dozens of tiny ones per swipe
+  // (plus momentum), a mouse wheel one ~100 px event per notch (= 1/32 of the travel).
+  // Up = higher, as the fingers or wheel move. Macs scroll "naturally" by default (content follows the fingers, so
+  // fingers up = deltaY > 0): Safari says so (webkitDirectionInvertedFromDevice); elsewhere on a Mac assume it.
+  const isMac = /Mac/.test(navigator.platform || navigator.userAgent);
+  const setPot = (i, v) => { hw.pots[i] = Math.max(0, Math.min(4095, Math.round(v))); paintKnobs(); };
   knobs.forEach((k, i) => {
-    let drag = null;
-    k.g.addEventListener('pointerdown', (e) => { e.preventDefault(); k.g.setPointerCapture(e.pointerId); drag = { y: e.clientY, v: hw.pots[i] }; });
+    let drag = null, acc = 0;
+    k.g.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      k.g.setPointerCapture(e.pointerId);
+      drag = { x: e.clientX, y: e.clientY, v: hw.pots[i] };
+    });
     k.g.addEventListener('pointermove', (e) => {
       if (!drag) return;
       const fine = e.shiftKey ? 0.25 : 1;
-      hw.pots[i] = Math.max(0, Math.min(4095, Math.round(drag.v + (drag.y - e.clientY) * 18 * fine)));
-      paintKnobs();
+      setPot(i, drag.v + ((drag.y - e.clientY) + (e.clientX - drag.x)) * 18 * fine);
     });
-    k.g.addEventListener('pointerup', () => { drag = null; });
+    const end = () => { drag = null; };
+    k.g.addEventListener('pointerup', end);
+    k.g.addEventListener('pointercancel', end);
     k.g.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      hw.pots[i] = Math.max(0, Math.min(4095, hw.pots[i] - Math.sign(e.deltaY) * 128));
-      paintKnobs();
+      e.preventDefault();                         // no page scroll, no pinch zoom over a knob
+      if (e.ctrlKey) return;                      // pinch: not a turn
+      const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1;   // lines / pages -> px
+      const natural = e.webkitDirectionInvertedFromDevice !== undefined ? e.webkitDirectionInvertedFromDevice : isMac;
+      // vertical swipe, or a sideways one (right = higher)
+      const d = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? (natural ? e.deltaY : -e.deltaY) : e.deltaX;
+      acc += d * unit * 1.28 * (e.shiftKey ? 0.25 : 1);
+      const step = Math.trunc(acc);
+      if (!step) return;
+      acc -= step;
+      setPot(i, hw.pots[i] + step);
     }, { passive: false });
   });
   function paintKnobs() {
