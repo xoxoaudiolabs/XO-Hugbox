@@ -59,9 +59,9 @@ window.HUGBOX_GUIDE = (() => {
     ['3 W 8 Ω box speaker 28.2×31×15.3 mm', 1, 'with two screw ears'],
     ['LP102540 1100 mAh LiPo (with protection)', 1, ''],
     pick(['M3×12 countersunk screw', 4, 'corners only - no screw by the knobs'],
-      ['M3 button-head screw (black)', '4 + 1', '4× M3×12 in the corners, 1× M3×16 through the knob strip']),
+      ['M3×12 button-head screw (black)', 4, 'corners only - no screw by the knobs']),
     pick(['1 mm spacer (PCB to plate)', 5, 'qty assumed: 4 corners + the support post by the knobs'],
-      ['1.5 mm spacer (PCB to acrylic)', 5, '4 corners + the knob-strip screw']),
+      ['1.5 mm spacer (PCB to acrylic)', 5, '4 corners + the support post by the knobs']),
     pick(['M2.5×6 self-tapping screw', 2, 'speaker ears'], ['M2.5×6 machine screw', 2, 'speaker ears, into the tapped posts']),
     ...(ALU ? [['Foam tape', '-', 'holds the LiPo (no cradle); 1 mm ring seals the mic port']] : []),
     ['Hook-up wire', '-', 'XIAO BAT leads (2), PCF I2C (4), speaker leads (2)'],
@@ -257,8 +257,8 @@ ${pick(`          <li><b>4× M3×12 countersunk</b> in the corners, from the top
           snug, don't strip the plastic.</li>
           <li>There is <b>no fifth screw</b>: by the right-hand knob the shell boss and its 1 mm spacer just support the board,
           and the corner screws clamp it. The plate is solid there.</li>`, `          <li><b>4× M3×12 button-head</b> in the corners, from the top, into the tapped shell bosses.</li>
-          <li><b>1× M3×16 button-head</b> through the knob strip by the right-hand knob, into the fifth boss.
-          Snug only: acrylic cracks if overtightened.</li>`)}
+          <li>Snug only: acrylic cracks if overtightened.</li>
+          <li>There is <b>no fifth screw</b>: by the right-hand knob the shell boss and its spacer just support the board.</li>`)}
           <li>Tighten the pot nuts on the strip.</li>
         </ol>`,
     },

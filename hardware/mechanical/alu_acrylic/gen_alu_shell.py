@@ -49,7 +49,7 @@ def wall_rib(x, y, d, z1):
 
 
 solids = []
-for (x, y) in L.HOLES:                                   # PCB bosses; all five tapped M3 (fifth = knob-strip screw)
+for (x, y) in L.HOLES:                                   # PCB bosses: four corners tapped M3, the fifth a plain support post
     solids += [cyl(x, y, BOSS_D, 0, boss_top)] + wall_rib(x, y, BOSS_D, boss_top)
 ears = [(L.SPK_C[0], L.SPK_C[1] + s * L.SPK_EAR_PITCH / 2) for s in (-1, 1)]
 for (x, y) in ears:                                      # speaker ear posts, tapped M2.5
@@ -59,7 +59,8 @@ for s in solids:
 # keep everything inside the outer outline (ribs run into the walls)
 shell = shell.intersect(rrect(W, H, 3.0, 0, top))
 
-for (x, y) in L.HOLES:
+for i, (x, y) in enumerate(L.HOLES):
+    if i in L.SUPPORT_ONLY: continue                     # support post under the knob strip: no screw, no hole
     shell = shell.cut(cyl(x, y, M3_TAP, floor_t, boss_top + 1))       # blind: 2 mm floor stays solid
 for (x, y) in ears:
     shell = shell.cut(cyl(x, y, M25_TAP, floor_t, ear_post_top + 1))

@@ -409,7 +409,7 @@ function buildModel(STEP) {
   }
   if (ALU) {
     const p = part('shell', { name: 'Aluminium shell (black anodized)', step: STEP.speaker, explode: 0, xray: true,
-      info: 'CNC 6061, Type II black anodize. PCB rests on the five tapped M3 bosses at z = 16.5 mm; acrylic layer 1 rests on the wall top. Tapped M2.5 speaker posts, USB-C and jack openings; no battery cradle (foam tape).' });
+      info: 'CNC 6061, Type II black anodize. PCB rests on the five bosses at z = 16.5 mm (four tapped M3, one plain support by the knobs); acrylic layer 1 rests on the wall top. Tapped M2.5 speaker posts, USB-C and jack openings; no battery cradle (foam tape).' });
     p.add(stlGeometry(D.stl.aluShell), '#1c1c1f', 0, 0, 0, { roughness: 0.42, metalness: 0.65 });
   } else {
     const p = part('shell', { name: '3D-printed bottom shell', step: STEP.speaker, explode: 0, xray: true,
@@ -497,13 +497,15 @@ function buildModel(STEP) {
   }
 
   // ---- case screws: 4x M3x12 countersunk in the corners. The pot-strip position is a screwless support post.
-  //      Aluminium + acrylic: black button heads, 4x M3x12 + 1x M3x16 through the knob strip into the fifth boss.
+  //      Aluminium + acrylic: black button heads, still corners only.
   if (ALU) {
-    const p = part('screws', { name: 'M3 button-head screws (4× M3×12 + 1× M3×16)', qty: L.HOLES.length, step: STEP.close, explode: 120,
-      info: 'Four corners through acrylic layers 1 + 2, the spacers and the PCB; the fifth through the knob strip by the right-hand knob. All into tapped M3 bosses - snug only, acrylic cracks if overtightened.' });
-    const MS = { metalness: 0.5, roughness: 0.4 }, support = new Set(L.SUPPORT_ONLY || []);
+    const support = new Set(L.SUPPORT_ONLY || []);
+    const p = part('screws', { name: 'M3×12 button-head screws (corners)', qty: L.HOLES.length - support.size, step: STEP.close, explode: 120,
+      info: 'In the four corners through acrylic layers 1 + 2, the spacers and the PCB, into the tapped M3 bosses - snug only, acrylic cracks if overtightened. No screw by the knobs.' });
+    const MS = { metalness: 0.5, roughness: 0.4 };
     L.HOLES.forEach(([x, y], i) => {
-      const top = support.has(i) ? Z.strip : Z.plateTop, len = support.has(i) ? 16 : 12;
+      if (support.has(i)) return;                    // support post only
+      const top = Z.plateTop, len = 12;
       const head = new THREE.SphereGeometry(2.85, 24, 8, 0, Math.PI * 2, 0, Math.PI / 2); head.scale(1, 1, 1.65 / 2.85); head.rotateX(Math.PI / 2);
       p.add(head, '#1b1b1d', x, y, top, MS);
       p.cylZ(1.45, len, '#1b1b1d', x, y, top - len, 12, MS);

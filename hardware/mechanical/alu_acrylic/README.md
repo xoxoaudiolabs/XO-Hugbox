@@ -46,8 +46,9 @@ Heights are from the top of the PCB. MX switches put the top of the switch plate
 
 - Sheet thickness: if a vendor's sheet isn't exactly the size above, change `ACR_*_T` in `layout.py`. The spacer height
   then adjusts so the switch plate top stays at +5.0.
-- Solvent-weld layers 3 and 4 to each other and to layer 2 along the knob strip. Layers 1 and 2 are held by the screws
-  and switch clips.
+- Solvent-weld layers 3 and 4 to each other and to layer 2 along the knob strip. Layers 1 and 2 are held by the four
+  corner screws and the switch clips. There is no screw by the knobs: the fifth boss is a plain support post under the
+  strip, as on the printed version.
 - The speaker face seals against the underside of layer 1 (same height as the printed plate's locator).
 - Clear acrylic shows the whole board. Smoked or frosted sheet for layer 2 hides more of it.
 
@@ -59,7 +60,7 @@ holes are blind, so the 2 mm floor stays solid.
 
 | Holes | Where (plate coords, mm) | Thread | Depth |
 |---|---|---|---|
-| 5 | PCB bosses (6,6) (86.2,6) (6,70) (86.2,70) (86.2,112) | **M3** (2.5 drill) | 14.5 (to floor) |
+| 4 | Corner PCB bosses (6,6) (86.2,6) (6,70) (86.2,70) | **M3** (2.5 drill) | 14.5 (to floor) |
 | 2 | Speaker posts (18.3,124.3) (18.3,161.3) | **M2.5** (2.05 drill) | 9.2 (to floor) |
 
 - Inside corners: 3.0 mm radius below the PCB, **0.8 mm radius** in the top 3.1 mm. The PCB's square corners are only
@@ -71,8 +72,8 @@ holes are blind, so the 2 mm floor stays solid.
 ## Assembly changes vs the printed version
 
 - 1.5 mm spacers instead of 1 mm.
-- Screws: 4× M3×12 **button head** (black) at the corners, plus 1× M3×16 button head through the knob strip into the
-  fifth boss, replacing the countersunk ones. 2× M2.5×6 machine screws (not self-tapping) for the speaker.
+- Screws: 4× M3×12 **button head** (black) at the corners, replacing the countersunk ones. No screw by the knobs; the
+  fifth boss (86.2,112) is an untapped support post. 2× M2.5×6 machine screws (not self-tapping) for the speaker.
 - Mic: solder the INMP441 **1.5 mm above the board** (header plastic removed, use a shim) instead of on its 2.5 mm
   spacer. Its label face then sits 1.0 mm under layer 2 (0.5 mm above the solder). A 1 mm foam ring around the sound
   port seals it.

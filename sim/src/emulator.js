@@ -94,8 +94,9 @@
     el('rect', { x: ox - (L.OLED_GLASS[0] + 1) / 2, y: Y(oy + L.OLED_GLASS_OFF + (L.OLED_GLASS[1] + 1) / 2), width: L.OLED_GLASS[0] + 1, height: L.OLED_GLASS[1] + 1, fill: 'none', ...edge }, g);
     el('rect', { x: px - 4.7, y: Y(py) - 2.2, width: 9.4, height: 4.4, fill: 'none', ...edge }, g);
     grille((x, y) => el('circle', { cx: x, cy: y, r: 1, fill: '#0c0c0c', ...edge, 'stroke-width': 0.15 }, g));
-    // black M3 button heads: four corners + the fifth through the knob strip
-    for (const [x, y] of L.HOLES) {
+    // black M3 button heads, corners only (the knob-strip position is a support post, no screw)
+    for (const [i, [x, y]] of L.HOLES.entries()) {
+      if (support.has(i)) continue;
       el('circle', { cx: x, cy: Y(y), r: 2.85, fill: '#1b1b1d', stroke: '#4a4a50', 'stroke-width': 0.3 }, g);
       el('polygon', { points: [0, 1, 2, 3, 4, 5].map((k) => `${x + Math.cos(k * Math.PI / 3)},${Y(y) + Math.sin(k * Math.PI / 3)}`).join(' '), fill: '#000' }, g);
     }
