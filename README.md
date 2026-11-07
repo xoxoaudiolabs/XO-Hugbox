@@ -62,7 +62,7 @@ It needs an internet connection to load three.js.
 
 **Main parts:** Seeed XIAO ESP32-S3 · PCF8574T I/O expander · MAX98357A amp + 3 W speaker · PCM5102A DAC (headphone/line out) ·
 1.3" SH1106 OLED · 4× B10K pots · 17× MX switches + 16× 1N4148 · 1100 mAh LiPo · 2-layer PCB · 3D-printed plate and shell.
-Target: under $50 in parts. Full parts list, what to measure before ordering, PCB order notes and printing settings:
+About $60-85 in parts per unit at small quantities (rough estimate). Full parts list, costs, what to measure before ordering, PCB order notes and printing settings:
 **[docs/hardware.md](docs/hardware.md)**.
 
 ## Repository layout

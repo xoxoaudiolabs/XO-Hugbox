@@ -29,7 +29,28 @@ all generated from it.
 | 2 | M2.5×6 self-tapping screws | Speaker. |
 | - | Thin hook-up wire | PCF I2C jumpers, XIAO battery leads, MTDI lead. |
 
-Target: under $50 in parts per unit.
+**Cost: about $60-85 in parts per unit** when building a handful. These are rough estimates from typical
+AliExpress/Amazon prices (2026-11), not quotes; only the PCB figure is a real order.
+
+| Part | Rough cost |
+|---|---|
+| PCB (5 from PCBWay, delivered, see [Ordering the PCB](#ordering-the-pcb)) | $18.54 |
+| XIAO ESP32-S3 | $7-10 |
+| SH1106 1.3" OLED | $4-6 |
+| PCM5102A DAC | $3-5 |
+| MAX98357A amp | $1.50-3 |
+| PCF8574T module | $1.50 |
+| INMP441 mic | $2.40 |
+| 17 MX switches + 17 keycaps | $8-15 |
+| 4 pots + 4 aluminium knobs | $6-8 |
+| 1100 mAh LiPo | $5-8 |
+| Speaker | $1.50-3 |
+| Diodes, resistors, slide switch, screws, spacers, wire | ~$1.50 |
+| Printed plate + shell (filament) | ~$2 |
+| **Total** | **~$62-85** |
+
+Shipping, duty and fees are most of the PCB cost at 5 boards; a bigger board order and bulk module prices bring the
+total down to roughly $50.
 
 ## Check before ordering
 
