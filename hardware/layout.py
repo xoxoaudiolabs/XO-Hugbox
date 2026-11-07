@@ -77,3 +77,19 @@ MIC_SPACER = 2.5                # header plastic between the module and the main
 MIC_POCKET = MIC_SPACER + MIC_PCB_T - (Z_PLATE_BOT - Z_PCB - PCB_T) + 0.5   # 3.0: label face + 0.5 for solder/foam
 MIC_HOLE = 1.5                  # sound hole through the plate roof, over the port
 MTDI_PAD = (11.5, 80.5)         # J_MTDI landing pad for the wire from the XIAO's MTDI pad (GPIO41)
+# ---- Variant: black anodized aluminium shell + clear acrylic faceplate (hardware/mechanical/alu_acrylic/) ----
+# Heights are from the PCB top. MX puts the switch plate's TOP at +5.0; the spacers take up whatever the sheets leave.
+# Layers: 1 under-layer (pockets), 2 switch plate, 3 knob spacer, 4 knob top (the pot nuts clamp 4 onto the cans).
+ACR_SW_TOP = 5.0                # PCB top -> switch plate top (MX standard)
+ACR_SW_T = 1.5                  # layer 2, switch plate (the MX clips want 1.5)
+ACR_UNDER_T = 2.0               # layer 1, under-layer
+ACR_KNOB_T = 2.0                # layers 3 + 4 (can top at +7.12; layer 4 sits at +7.0..+9.0)
+ACR_SPACER = ACR_SW_TOP - ACR_SW_T - ACR_UNDER_T   # 1.5: spacers between the PCB and layer 1
+ACR_CAN_D = POT_CAN_D + 0.6     # pot can holes (laser-cut, so tighter than the printed 1.3)
+ACR_MIC_SPACER = 1.5            # mic soldered this high (no header plastic) so it sits under layer 2's sound hole
+PWR_BODY_H = 3.7                # 12D00G body height above the PCB (estimate, measure!); > layer 2's +3.5 -> body window
+ALU_TOP = Z_PCB + PCB_T + ACR_SPACER   # 19.6: shell wall top = underside of layer 1
+ALU_WALL = 2.0; ALU_FLOOR = 2.0
+ALU_R_IN = 0.8                  # inside corner radius where the PCB sits: its square corners are 0.4 mm from the wall,
+                                # so 0.8 leaves 0.23 mm at the corner (1.37 would touch)
+ALU_R_LOW = 3.0                 # inside corner radius below the PCB

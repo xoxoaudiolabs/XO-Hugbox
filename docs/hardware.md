@@ -71,6 +71,8 @@ The board has **no reverse-polarity protection** on the battery input: check the
 - Plate: [`hardware/mechanical/xo_hugbox_top_plate.stl`](../hardware/mechanical/xo_hugbox_top_plate.stl). Use a layer height that
   divides 1.5 mm (0.15 / 0.25 / 0.3 mm) so the MX clip ledge comes out exact. Print one switch hole as a test first.
 - Shell: [`hardware/mechanical/xo_hugbox_shell.stl`](../hardware/mechanical/xo_hugbox_shell.stl).
+- Variant, not yet made: a CNC black anodized aluminium shell with a 4-layer laser-cut clear acrylic faceplate, for the
+  same board. See [`hardware/mechanical/alu_acrylic/`](../hardware/mechanical/alu_acrylic/README.md).
 
 ## Assembly
 
