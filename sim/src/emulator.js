@@ -605,22 +605,29 @@
   let ac = null, sp = null, lineOut, spkIn, spkOut, master, analyser;
   function startAudio() {
     if (ac) return;
-    try { ac = new AudioContext({ sampleRate: 44100 }); } catch (e) { ac = new AudioContext(); }
+    // Touch devices get a 4x bigger buffer: the audio is computed on the page's main thread, between screen redraws,
+    // and a phone (more so over Bluetooth) misses 23 ms deadlines now and then - heard as crackle, e.g. with the arp
+    // on, which redraws the screen on every note. 93 ms more latency is small next to Bluetooth's own.
+    const touch = matchMedia('(pointer: coarse)').matches;
+    const SP = touch ? 4096 : 1024;
+    try { ac = new AudioContext({ sampleRate: 44100, latencyHint: touch ? 'playback' : 'interactive' }); } catch (e) { ac = new AudioContext(); }
     // ScriptProcessor keeps everything on one thread with the WASM instance (works from file://).
     // 1024 frames = 8 firmware blocks of 128; latency ~23 ms on top of the browser's own.
-    sp = ac.createScriptProcessor(1024, 1, 2);   // input: the mic, when it is on
+    sp = ac.createScriptProcessor(SP, 1, 2);     // input: the mic, when it is on
     sp.onaudioprocess = (ev) => {
       audioBlocks++;
       const L0 = ev.outputBuffer.getChannelData(0), R0 = ev.outputBuffer.getChannelData(1);
       if (!core || !hw.power) { L0.fill(0); R0.fill(0); return; }
-      const mp = core._hb_mic_buf() >> 2, H32 = core.HEAP32;   // mic block first, as the board's audio task
-      if (micOn) {
-        const inp = ev.inputBuffer.getChannelData(0);
-        for (let i = 0; i < 1024; i++) H32[mp + i] = Math.round(Math.max(-1, Math.min(1, inp[i] * MIC_SCALE)) * 8388607);
-      } else H32.fill(0, mp, mp + 1024);
-      const p = core._hb_render(1024) >> 1;
-      const h = core.HEAP16;
-      for (let i = 0; i < 1024; i++) { L0[i] = h[p + 2 * i] / 32768; R0[i] = h[p + 2 * i + 1] / 32768; }
+      const inp = ev.inputBuffer.getChannelData(0);
+      for (let o = 0; o < SP; o += 1024) {          // hb_render takes at most 1024 frames
+        const mp = core._hb_mic_buf() >> 2, H32 = core.HEAP32;   // mic block first, as the board's audio task
+        if (micOn) {
+          for (let i = 0; i < 1024; i++) H32[mp + i] = Math.round(Math.max(-1, Math.min(1, inp[o + i] * MIC_SCALE)) * 8388607);
+        } else H32.fill(0, mp, mp + 1024);
+        const p = core._hb_render(1024) >> 1;
+        const h = core.HEAP16;
+        for (let i = 0; i < 1024; i++) { L0[o + i] = h[p + 2 * i] / 32768; R0[o + i] = h[p + 2 * i + 1] / 32768; }
+      }
     };
     master = ac.createGain();
     lineOut = ac.createGain();
