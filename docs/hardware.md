@@ -52,6 +52,8 @@ These dimensions are estimates in `hardware/layout.py`. Measure your actual part
 
 - **v1.0** (the board being ordered, silkscreen "XO-HUGBOX v1.0"): [`hardware/pcb/xo_hugbox_gerbers.zip`](../hardware/pcb/xo_hugbox_gerbers.zip). 2 layers, 1.6 mm, HASL lead-free.
   **The oval pot-pin slots must stay plated:** say so in the order notes.
+  **Cost (PCBWay, 2026-11-07):** 5 boards for $88.42 with shipping, plus a $4.28 card fee, so $92.70 in all:
+  about **$18.54 per board**. U.S. import duty, if the carrier charges any, is not included.
 - **v1.1:** [`hardware/pcb/xo_hugbox_v11_gerbers.zip`](../hardware/pcb/xo_hugbox_v11_gerbers.zip). Same parts and outline; gives the
   speaker amp its own I2S data line so the speaker can be filtered separately. Pending a breadboard test; see
   [speaker-path-plan.md](speaker-path-plan.md). Until that passes, v1.0 is the safe choice.
