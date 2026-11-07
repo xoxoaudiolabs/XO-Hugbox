@@ -3,6 +3,16 @@
 // than you might expect (mic before the PCF8574T; pots/OLED/power switch before the plate; PCM5102A after the
 // switch pins are clipped).
 window.HUGBOX_GUIDE = (() => {
+  // Case: 'printed' (default) or 'alu' = black anodized aluminium shell + 4-layer clear acrylic faceplate
+  // (hardware/mechanical/alu_acrylic). Picked with the Case menu (kept in localStorage) or #case=alu in the URL.
+  const CASE = (() => {
+    const h = /case=(\w+)/.exec(location.hash);
+    let c = h ? h[1] : null;
+    if (!c) try { c = localStorage.getItem('hugbox-guide-case'); } catch (e) {}
+    return c === 'alu' ? 'alu' : 'printed';
+  })();
+  const ALU = CASE === 'alu';
+  const pick = (printed, alu) => (ALU ? alu : printed);
   const STEP = { diodes: 1, xiao: 2, max: 3, mic: 4, pcf: 5, switches: 6, underplate: 7, plate: 8, pcm: 9,
     speaker: 10, battery: 11, close: 12, caps: 13, poweron: 14 };
 
@@ -29,8 +39,10 @@ window.HUGBOX_GUIDE = (() => {
 
   const BOM = [
     ['XO-Hugbox v1 PCB', 1, '2-layer 1.6 mm, ordered 5 from PCBWay'],
-    ['Top plate (3D-printed)', 1, 'xo_hugbox_top_plate.stl, layer height dividing 1.5 mm'],
-    ['Bottom shell (3D-printed)', 1, 'xo_hugbox_shell.stl'],
+    pick(['Top plate (3D-printed)', 1, 'xo_hugbox_top_plate.stl, layer height dividing 1.5 mm'],
+      ['Clear acrylic faceplate, 4 laser-cut layers', 1, 'alu_acrylic/xo_hugbox_acrylic_L1-L4.dxf: 2 + 1.5 + 2 + 2 mm']),
+    pick(['Bottom shell (3D-printed)', 1, 'xo_hugbox_shell.stl'],
+      ['Aluminium shell, CNC 6061, black anodized', 1, 'alu_acrylic/xo_hugbox_alu_shell.step; M3 + M2.5 threads tapped']),
     ['Seeed XIAO ESP32-S3', 1, 'must be S3; comes with the U.FL antenna'],
     ['PCF8574T I/O expander module', 1, 'from a 5-pack; socket removed, address bridged to 0x20'],
     ['MAX98357A I2S amp module', 1, 'generic 7-pin (LRC BCLK DIN GAIN SD GND VIN)'],
@@ -46,9 +58,12 @@ window.HUGBOX_GUIDE = (() => {
     ['12D00G-5mm slide switch', 1, 'power'],
     ['3 W 8 Ω box speaker 28.2×31×15.3 mm', 1, 'with two screw ears'],
     ['LP102540 1100 mAh LiPo (with protection)', 1, ''],
-    ['M3×12 countersunk screw', 4, 'corners only - no screw by the knobs'],
-    ['1 mm spacer (PCB to plate)', 5, 'qty assumed: 4 corners + the support post by the knobs'],
-    ['M2.5×6 self-tapping screw', 2, 'speaker ears'],
+    pick(['M3×12 countersunk screw', 4, 'corners only - no screw by the knobs'],
+      ['M3 button-head screw (black)', '4 + 1', '4× M3×12 in the corners, 1× M3×16 through the knob strip']),
+    pick(['1 mm spacer (PCB to plate)', 5, 'qty assumed: 4 corners + the support post by the knobs'],
+      ['1.5 mm spacer (PCB to acrylic)', 5, '4 corners + the knob-strip screw']),
+    pick(['M2.5×6 self-tapping screw', 2, 'speaker ears'], ['M2.5×6 machine screw', 2, 'speaker ears, into the tapped posts']),
+    ...(ALU ? [['Foam tape', '-', 'holds the LiPo (no cradle); 1 mm ring seals the mic port']] : []),
     ['Hook-up wire', '-', 'XIAO BAT leads (2), PCF I2C (4), speaker leads (2)'],
   ];
 
@@ -59,8 +74,10 @@ window.HUGBOX_GUIDE = (() => {
       body: `
         <p>XO-Hugbox is a 4×4-pad MIDI controller and standalone synth. One 2-layer PCB carries everything:
         keys, pots, OLED and power switch on the <b>top</b>; the XIAO ESP32-S3, PCF8574T, MAX98357A and PCM5102A
-        modules plus the diodes and divider on the <b>back</b>. A 3D-printed plate holds the switches, a printed shell
-        holds the speaker and battery.</p>
+        modules plus the diodes and divider on the <b>back</b>. ${pick(`A 3D-printed plate holds the switches, a printed shell
+        holds the speaker and battery.`, `A stack of four laser-cut clear acrylic layers holds the switches and pots, a black
+        anodized aluminium shell holds the speaker and battery.`)}</p>
+        <p class="dim">Case: <b>${pick('3D-printed', 'aluminium + acrylic')}</b>. Switch it with the <b>Case</b> menu above the model.</p>
         <p>Drag to orbit, scroll to zoom, right-drag to pan. Hover any part for its name, click it for details and pins.
         Use the <b>Explode</b> slider, or step through the build with <b>Next</b> (or the → key).</p>
         <h3>Parts list</h3>
@@ -78,7 +95,7 @@ window.HUGBOX_GUIDE = (() => {
         <ol>
           <li><b>16× 1N4148</b> at D1–D16, one under each pad. Bend the leads to 7.62 mm.</li>
           <li><b>2× 100 kΩ</b> at R1 and R2 (brown-black-yellow), the battery-sense divider into D9.</li>
-          <li>Solder on the top side and clip the leads <b>flush</b> - the plate sits only 1 mm above the top.
+          <li>Solder on the top side and clip the leads <b>flush</b> - ${pick('the plate sits only 1 mm above the top.', 'the acrylic sits only 1.5 mm above the top.')}
           <b>Keep 12 of the clipped leads</b>: they become the pot wire legs in step 7.</li>
         </ol>
         <div class="callout warn"><b>Diode polarity:</b> the black band (cathode) goes to the <b>square pad</b>.
@@ -113,8 +130,9 @@ window.HUGBOX_GUIDE = (() => {
       title: 'INMP441 mic (top, before the PCF8574T)', view: V.mic, focus: ['mic'],
       body: `
         <div class="callout fix"><b>Why now:</b> J_MIC's six pins come through the board right where the PCF8574T module sits on the
-        back. Once that module is on you can't reach them, so the mic is soldered first. It sits under the plate's mic pocket,
-        which clears it, so the plate can go on later as normal.</div>
+        back. Once that module is on you can't reach them, so the mic is soldered first. ${pick(`It sits under the plate's mic pocket,
+        which clears it, so the plate can go on later as normal.`, `It sits in an opening in acrylic layer 1, right under the
+        1.5 mm sound hole in layer 2, so it sits <b>lower</b> than on its header plastic (see step 3 below).`)}</div>
         <ol>
           <li>The mic listens through the small hole in the <b>middle of its label side</b> (the mic can is on the other side),
           so it goes in <b>label side up</b>.</li>
@@ -122,7 +140,8 @@ window.HUGBOX_GUIDE = (() => {
           can side (plastic on the can side), solder them on the label side and clip them <b>flush</b>, keeping the joints low.
           Stick a small ring of thin foam tape around the port hole.</li>
           <li>Set the long ends into <b>J_MIC</b> from the <b>top</b>: <b>SCK WS L/R toward the knobs, SD VDD GND toward the keys</b>,
-          matching the board labels (it only fits one way round). The header plastic sits flat on the board and sets the height.</li>
+          matching the board labels (it only fits one way round). ${pick('The header plastic sits flat on the board and sets the height.',
+          'Slide the header plastic off first and hold the module <b>1.5 mm above the board</b> with a shim (a spare spacer) while you solder. Use a 1 mm foam ring around the port.')}</li>
           <li>Solder the six pins on the back and <b>clip them flush</b>: the PCF8574T module goes right over them next.</li>
         </ol>`,
     },
@@ -146,13 +165,21 @@ window.HUGBOX_GUIDE = (() => {
     },
     {
       title: 'Switches into the plate', view: V.plateAbove, focus: ['plate', 'switches'], offsets: { plate: 45, switches: 45 },
-      body: `
+      body: pick(`
         <ol>
           <li>Print the plate with a layer height that divides 1.5 mm (<b>0.15, 0.25 or 0.3 mm</b>) so the MX clip ledge is exact.
           <b>Test one switch in one hole first.</b></li>
           <li>Snap all <b>17 MX switches</b> in from the top (16 pads + shift), pins toward the knobs to match the PCB holes.</li>
           <li>Don't put the plate on the PCB yet.</li>
-        </ol>`,
+        </ol>`, `
+        <ol>
+          <li>Peel the protective film off all four acrylic layers. <b>Solvent-weld</b> layer 3 (knob spacer) and layer 4
+          (knob top) onto layer 2 (the 1.5 mm switch plate) along the knob strip, holes lined up, and let it cure.</li>
+          <li>Snap all <b>17 MX switches</b> into layer 2 from the top (16 pads + shift), pins toward the knobs. The clips need the
+          1.5 mm sheet. <b>Test one switch first</b>: laser kerf can make the holes loose.</li>
+          <li>Slide <b>layer 1</b> (2 mm, 16 mm pockets) onto the switches from below.</li>
+          <li>Don't put the stack on the PCB yet.</li>
+        </ol>`),
     },
     {
       title: 'Pots, OLED and power switch (top, before the plate)', view: V.underplate, focus: ['pots', 'oled', 'power'],
@@ -168,7 +195,7 @@ window.HUGBOX_GUIDE = (() => {
           (GND, wiper, 3V3 left to right). The slots are long, so the exact leg position does not matter.</li>
           <li><b>OLED</b>: pull the black plastic off its header. Header toward the pots, so the module is <b>upside down</b>
           (the firmware's <code>U8G2_R2</code> turns the picture back). Board pads read SDA SCL VCC GND left to right.
-          It must end up <b>0.8 mm above the board</b> - the plate pocket sets that height in the next step.</li>
+          It must end up <b>0.8 mm above the board</b> - ${pick('the plate pocket sets that height in the next step.', 'use a 0.8 mm shim. The acrylic has a window over the glass, not a pocket.')}</li>
           <li><b>12D00G power switch</b>: three pins in, actuator up.</li>
         </ol>`,
     },
@@ -176,7 +203,7 @@ window.HUGBOX_GUIDE = (() => {
       title: 'Plate onto the PCB, solder from below', view: V.plate, focus: ['plate', 'switches', 'spacers'],
       body: `
         <ol>
-          <li>Put a <b>1 mm spacer</b> on each of the five screw holes.</li>
+          <li>Put a <b>${pick('1 mm', '1.5 mm')} spacer</b> on each of the five screw holes.</li>
           <li>Lower plate + switches onto the board: every switch's pins through, pot shafts up through their holes,
           OLED glass into its window, slide actuator in its slot. Thread the pot nuts on loosely to hold the stack.</li>
           <li>Flip it and solder: <b>17 switches</b>, then the <b>pot legs</b> (clip them flush afterwards), the <b>OLED</b> (check it is level and 0.8 mm up) and the <b>power switch</b>.</li>
@@ -201,9 +228,9 @@ window.HUGBOX_GUIDE = (() => {
       title: 'Speaker into the shell', view: V.shellTop, focus: ['speaker', 'spkScrews'], hide: BOARD,
       body: `
         <ol>
-          <li>Speaker <b>face up</b> - it presses against the plate grille when the case closes.</li>
-          <li>Screw both ears to the two shell posts with <b>2× M2.5×6</b> self-tappers.</li>
-          <li>Ear spacing in the design is ~37 mm, estimated from a listing photo: <b>measure your speaker</b> before printing the shell.</li>
+          <li>Speaker <b>face up</b> - it presses against the ${pick('plate grille', 'grille in acrylic layer 1')} when the case closes.</li>
+          <li>Screw both ears to the two shell posts with <b>2× M2.5×6</b> ${pick('self-tappers', 'machine screws (the posts are tapped)')}.</li>
+          <li>Ear spacing in the design is ~37 mm, estimated from a listing photo: <b>measure your speaker</b> before ${pick('printing', 'ordering')} the shell.</li>
           <li>Solder the leads from the MAX98357A + / − to the speaker tabs.</li>
         </ol>`,
     },
@@ -212,9 +239,10 @@ window.HUGBOX_GUIDE = (() => {
       body: `
         <ol>
           <li>Power switch <b>OFF</b>.</li>
-          <li><b>LP102540 LiPo</b> (with protection board) into the cradle under the keys.</li>
+          <li><b>LP102540 LiPo</b> (with protection board) ${pick('into the cradle under the keys', 'on the shell floor under the keys, held with foam tape (there is no cradle)')}.</li>
           <li>Leads to the <b>BAT+ / BAT−</b> pads (J11, left edge under the keys), soldered from the back.</li>
-          <li>Plug the <b>U.FL antenna</b> into the XIAO and stick it to the inside of a wall, away from the speaker magnet and the battery.</li>
+          <li>Plug the <b>U.FL antenna</b> into the XIAO and ${pick('stick it to the inside of a wall, away from the speaker magnet and the battery.',
+          'stick it <b>flat to the underside of acrylic layer 1</b>, beside the top of the speaker, away from copper. Not on a wall: the aluminium blocks Bluetooth. Test BLE MIDI range.')}</li>
         </ol>
         <div class="callout warn"><b>Polarity:</b> check the battery's red/black against the BAT+ / BAT− pads <b>with a meter</b>
         before soldering. LiPo lead colours and JST pinouts are not reliable, and there is no reverse protection on the board.</div>
@@ -225,10 +253,12 @@ window.HUGBOX_GUIDE = (() => {
       body: `
         <ol>
           <li>Lower the board + plate into the shell: USB-C into the left-wall opening, the jack into the right-wall hole.</li>
-          <li><b>4× M3×12 countersunk</b> in the corners, from the top. They self-tap into the shell bosses -
+${pick(`          <li><b>4× M3×12 countersunk</b> in the corners, from the top. They self-tap into the shell bosses -
           snug, don't strip the plastic.</li>
           <li>There is <b>no fifth screw</b>: by the right-hand knob the shell boss and its 1 mm spacer just support the board,
-          and the corner screws clamp it. The plate is solid there.</li>
+          and the corner screws clamp it. The plate is solid there.</li>`, `          <li><b>4× M3×12 button-head</b> in the corners, from the top, into the tapped shell bosses.</li>
+          <li><b>1× M3×16 button-head</b> through the knob strip by the right-hand knob, into the fifth boss.
+          Snug only: acrylic cracks if overtightened.</li>`)}
           <li>Tighten the pot nuts on the strip.</li>
         </ol>`,
     },
@@ -252,5 +282,5 @@ pio device monitor</pre>
         A dead pad → that pad's diode is reversed.</div>`,
     },
   ];
-  return { STEP, steps, BOM, BOARD };
+  return { STEP, steps, BOM, BOARD, CASE };
 })();

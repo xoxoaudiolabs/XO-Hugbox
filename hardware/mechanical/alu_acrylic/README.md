@@ -14,6 +14,7 @@ parts in `../` are unchanged and still the default.
 | `xo_hugbox_alu_shell.stl` | Preview only. |
 | `xo_hugbox_acrylic_L1.dxf` … `_L4.dxf` | Laser cutting, one file per layer, mm. |
 | `xo_hugbox_acrylic.scad` | Layer outlines (`layer=1..4`) and a 3D preview of the stack (`layer=0`, shell coordinates). |
+| `xo_hugbox_acrylic.stl` | The stack in 3D (shell coordinates), for the build guide and previews. |
 | `gen_alu_shell.py`, `gen_acrylic.py` | Generators. All dimensions come from `hardware/layout.py` (the `ACR_*` / `ALU_*` block). |
 
 Regenerate from this folder:
@@ -21,8 +22,12 @@ Regenerate from this folder:
 ```bash
 PYTHONPATH=../.. python gen_acrylic.py
 for n in 1 2 3 4; do openscad -D layer=$n -o xo_hugbox_acrylic_L$n.dxf xo_hugbox_acrylic.scad; done
+openscad -D layer=0 -o xo_hugbox_acrylic.stl xo_hugbox_acrylic.scad
 PYTHONPATH=../.. python gen_alu_shell.py      # needs CadQuery: pip install cadquery (Python 3.10-3.12)
 ```
+
+Then rebuild the build guide data (`docs/build-guide/tools/gen_data.py` + `bundle.py`): it packs both STLs for its
+**Case** menu. The emulator's case view is drawn from `layout.py` (`sim/gen_layout.py`).
 
 `gen_acrylic.py` reads the v1.0 pad positions from `docs/build-guide/tools/pcb.json` (the header rows that come up through
 the board).

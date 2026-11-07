@@ -1,9 +1,11 @@
 // XO-Hugbox 3D model: every part built from hardware/layout.py, the routed KiCad board and the STLs
 // (all packed into data.js). Coordinates are plate coordinates in mm, x right, y up (toward the
 // screen end), z up from the shell floor - the same frame as layout.py and assembly.scad.
-// Classic script: defines window.buildHugboxModel(THREE) so the bundled page needs only one ES module.
-window.buildHugboxModel = function (THREE) {
+// Classic script: defines window.buildHugboxModel(THREE, CASE) so the bundled page needs only one ES module.
+// CASE: 'printed' (3D-printed shell + plate) or 'alu' (aluminium shell + 4-layer acrylic, hardware/mechanical/alu_acrylic).
+window.buildHugboxModel = function (THREE, CASE) {
 'use strict';
+const ALU = CASE === 'alu';
 
 const D = window.HUGBOX_DATA;
 const L = D.layout;
@@ -13,11 +15,12 @@ const FP = Object.fromEntries(PCB.fps.map((f) => [f.ref, f]));
 const Z = {};
 Z.pcb = L.Z_PCB;                       // PCB underside
 Z.pcbTop = L.Z_PCB + L.PCB_T;          // PCB top
-Z.plate = L.Z_PLATE_BOT;               // plate underside (1 mm spacers)
-Z.plateTop = L.Z_PLATE_BOT + L.PLATE_T;
+Z.plate = ALU ? Z.pcbTop + L.ACR_SPACER : L.Z_PLATE_BOT;          // plate / acrylic layer 1 underside
+Z.plateTop = ALU ? Z.pcbTop + L.ACR_SW_TOP : L.Z_PLATE_BOT + L.PLATE_T;   // the same 5.0 mm above the PCB both ways
 Z.hdr = 2.5;                           // header plastic between PCB and the bottom modules
 Z.modTop = Z.pcb - Z.hdr;              // bottom modules: face toward the PCB
-Z.strip = Z.plate + ((L.Z_PCB + L.PCB_T + L.POT_BODY_H) - L.Z_PLATE_BOT) + 2.0;   // raised pot strip top
+Z.strip = ALU ? Z.plateTop + 2 * L.ACR_KNOB_T                                   // acrylic layers 3 + 4
+  : Z.plate + ((L.Z_PCB + L.PCB_T + L.POT_BODY_H) - L.Z_PLATE_BOT) + 2.0;   // raised pot strip top
 
 // pad names printed on the board silk for the custom footprints (hardware/pcb/build.py)
 const PADNAMES = {
@@ -330,10 +333,11 @@ function buildModel(STEP) {
   {
     const p = part('switches', { name: 'MX switches (16 pads + shift)', qty: 17, step: STEP.switches, explode: 75,
       refs: Array.from({ length: 17 }, (_, i) => 'SW' + (i + 1)),
-      info: 'Snap all 17 into the printed plate first (from the top), then fit plate + switches onto the PCB and solder. Pins point toward the knobs.' });
+      info: ALU ? 'Snap all 17 into acrylic layer 2 (the 1.5 mm switch plate) from the top, slide layer 1 on from below, then fit the stack onto the PCB and solder. Pins point toward the knobs.'
+        : 'Snap all 17 into the printed plate first (from the top), then fit plate + switches onto the PCB and solder. Pins point toward the knobs.' });
     const all = [...keyXY, L.SHIFT];
     all.forEach(([x, y], i) => {
-      p.box(14, 14, Z.plate - Z.pcbTop + 0.01, '#2b2b2b', x, y, Z.pcbTop);                 // lower housing, in the plate
+      p.box(14, 14, (ALU ? Z.plateTop - L.ACR_SW_T : Z.plate) - Z.pcbTop + 0.01, '#2b2b2b', x, y, Z.pcbTop);   // lower housing, in the plate
       const g = new THREE.CylinderGeometry(11 / Math.SQRT2, 15.6 / Math.SQRT2, 5.6, 4, 1); g.rotateY(Math.PI / 4); g.rotateX(Math.PI / 2);
       p.add(g.toNonIndexed(), '#353535', x, y, Z.plateTop + 2.8);
       p.box(4, 1.2, 3.6, i === 16 ? '#c8331d' : '#a32b23', x, y, Z.plateTop + 5.6);         // stem
@@ -343,10 +347,10 @@ function buildModel(STEP) {
     });
   }
   {
-    const p = part('spacers', { name: '1 mm spacers (PCB to plate)', qty: 5, step: STEP.plate, explode: 60,
+    const p = part('spacers', { name: ALU ? '1.5 mm spacers (PCB to acrylic)' : '1 mm spacers (PCB to plate)', qty: 5, step: STEP.plate, explode: 60,
       info: 'Between the PCB and the plate at the four corner screws and the support post by the knobs, so the MX switches seat at the right height (plate top 5.0 mm above the PCB).' });
     for (const [x, y] of L.HOLES) {
-      p.cylZ(3.0, 1.0, '#9da3a8', x, y, Z.pcbTop, 24, { metalness: 0.5, transparent: true, opacity: 0.9 });
+      p.cylZ(3.0, Z.plate - Z.pcbTop, '#9da3a8', x, y, Z.pcbTop, 24, { metalness: 0.5, transparent: true, opacity: 0.9 });
     }
   }
 
@@ -393,23 +397,33 @@ function buildModel(STEP) {
     for (const q of FP.SW18.pads) p.box(0.6, 0.3, 4.5, SILVER, q.xy[0], q.xy[1], Z.pcb - 1.2, { metalness: 0.8 });
   }
 
-  // ---- top plate (STL) and bottom shell (STL)
-  {
+  // ---- top plate and bottom shell (STLs): printed, or the aluminium + acrylic variant
+  if (ALU) {
+    const p = part('plate', { name: 'Clear acrylic faceplate (4 layers)', step: STEP.switches, explode: 75, xray: true,
+      info: 'Laser-cut clear acrylic: layer 1 (2 mm, pockets), layer 2 (1.5 mm switch plate), layers 3 + 4 (2 mm each, the knob strip, solvent-welded to layer 2). The pot nuts clamp layer 4 to the cans. DXFs in hardware/mechanical/alu_acrylic.' });
+    p.add(stlGeometry(D.stl.acrylic), '#d6ecf7', 0, 0, 0, { roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.38 });   // STL is in shell z
+  } else {
     const p = part('plate', { name: '3D-printed top plate', step: STEP.switches, explode: 75, xray: true,
       info: 'Print with a layer height that divides 1.5 mm (0.15 / 0.25 / 0.3) so the MX clip ledge is exact. Test one switch hole first.' });
     p.add(stlGeometry(D.stl.plate), '#f2efe6', 0, 0, Z.plate, { roughness: 0.8 });
   }
-  {
+  if (ALU) {
+    const p = part('shell', { name: 'Aluminium shell (black anodized)', step: STEP.speaker, explode: 0, xray: true,
+      info: 'CNC 6061, Type II black anodize. PCB rests on the five tapped M3 bosses at z = 16.5 mm; acrylic layer 1 rests on the wall top. Tapped M2.5 speaker posts, USB-C and jack openings; no battery cradle (foam tape).' });
+    p.add(stlGeometry(D.stl.aluShell), '#1c1c1f', 0, 0, 0, { roughness: 0.42, metalness: 0.65 });
+  } else {
     const p = part('shell', { name: '3D-printed bottom shell', step: STEP.speaker, explode: 0, xray: true,
       info: 'PCB rests on the five bosses at z = 16.5 mm; plate rests on the wall top. Speaker posts, battery cradle, USB-C and jack openings are built in.' });
     p.add(stlGeometry(D.stl.shell), '#d9d4c7', 0, 0, 0, { roughness: 0.85 });
   }
+  const spkTop = ALU ? Z.plate : Z.plate + 0.8;     // speaker face: under acrylic layer 1, or in the printed plate's 0.8 mm locator
 
   // ---- speaker + M2.5 screws + leads from the MAX98357A
   {
     const p = part('speaker', { name: '3 W 8 Ω box speaker 28.2×31×15.3', step: STEP.speaker, explode: 18,
-      info: 'Face up against the plate grille (sits in the 0.8 mm locator), ears screwed to the two shell posts with M2.5×6 self-tappers. Ear spacing ~37 mm is an estimate - measure yours.' });
-    const [sx, sy] = L.SPK_C, top = Z.plate + 0.8, h = 15.3;
+      info: (ALU ? 'Face up against the grille in acrylic layer 1, ears screwed to the two tapped shell posts with M2.5×6 machine screws.'
+        : 'Face up against the plate grille (sits in the 0.8 mm locator), ears screwed to the two shell posts with M2.5×6 self-tappers.') + ' Ear spacing ~37 mm is an estimate - measure yours.' });
+    const [sx, sy] = L.SPK_C, top = spkTop, h = 15.3;
     p.box(31, 28.2, h, '#1b1b1b', sx, sy, top - h);
     p.cylZ(10.5, 0.4, '#2c2c2c', sx, sy, top - 0.2, 40);
     p.cylZ(4, 0.6, '#3a3a3a', sx, sy, top - 0.1, 24);
@@ -423,9 +437,9 @@ function buildModel(STEP) {
     p.wire([[mx + 1.5, my, Z.modTop - 2.9], [mx - 3, my + 9, 5], [sx + 12, sy - 19, 5], [sx + 8, sy - 14.1, top - 6]], '#222', 0.35);
   }
   {
-    const p = part('spkScrews', { name: 'M2.5×6 self-tapping screws (speaker)', qty: 2, step: STEP.speaker, explode: 26,
+    const p = part('spkScrews', { name: ALU ? 'M2.5×6 machine screws (speaker)' : 'M2.5×6 self-tapping screws (speaker)', qty: 2, step: STEP.speaker, explode: 26,
       info: 'Through the speaker ears into the two shell posts.' });
-    const ez = Z.plate + 0.8 - L.SPK_EAR_DROP + L.SPK_EAR_T / 2;
+    const ez = spkTop - L.SPK_EAR_DROP + L.SPK_EAR_T / 2;
     for (const s of [-1, 1]) {
       const y = L.SPK_C[1] + s * L.SPK_EAR_PITCH / 2;
       p.cylZ(2.2, 1.6, SILVER, L.SPK_C[0], y, ez, 20, { metalness: 0.6, roughness: 0.35 });
@@ -436,7 +450,7 @@ function buildModel(STEP) {
   // ---- LiPo in the cradle + leads to J11, U.FL antenna on the left wall
   {
     const p = part('battery', { name: 'LP102540 1100 mAh LiPo', step: STEP.battery, explode: 8, refs: ['J11'],
-      info: 'In the shell cradle under the keys. Leads to the BAT+ / BAT- pads (J11). Check polarity against the pads with a meter - lead colours are not always right.' });
+      info: (ALU ? 'On the shell floor under the keys, held with foam tape (the aluminium shell has no cradle).' : 'In the shell cradle under the keys.') + ' Leads to the BAT+ / BAT- pads (J11). Check polarity against the pads with a meter - lead colours are not always right.' });
     p.box(25, 40, 10, '#aeb6c0', 46, 40, 2.2, { metalness: 0.5, roughness: 0.35 });
     p.box(23, 5, 3, '#2b6a3b', 46, 62.2, 5.5);    // protection board
     const a = pad('J11', 1), b = pad('J11', 2);
@@ -448,16 +462,17 @@ function buildModel(STEP) {
   {
     const p = part('mic', { name: 'INMP441 I2S mic module', step: STEP.mic, explode: 50, refs: ['J_MIC'],
       info: 'Label side up (the sound port is the hole in the middle of that side), on a 2×3 header into J_MIC: SCK WS L/R toward the knobs, SD VDD GND toward the keys. L/R is tied to GND, so the mic sends on the left slot.' });
-    const [mx, my] = L.MIC_C, R = L.MIC_D / 2, z0 = Z.pcbTop + L.MIC_SPACER;
+    const spacer = ALU ? L.ACR_MIC_SPACER : L.MIC_SPACER;   // acrylic: header plastic off, 1.5 mm above the board
+    const [mx, my] = L.MIC_C, R = L.MIC_D / 2, z0 = Z.pcbTop + spacer;
     p.cylZ(R, L.MIC_PCB_T, '#1c1f26', mx, my, z0, 48);                                   // module board
     p.cylZ(1.1, 0.05, '#c89a50', mx, my, z0 + L.MIC_PCB_T, 24);                           // port ring
     p.cylZ(0.45, 0.06, '#111', mx, my, z0 + L.MIC_PCB_T + 0.01, 16);                      // port
     p.box(4.7, 3.8, 1.0, '#c0c0c0', mx + 0.6, my, z0 - 1.0, { metalness: 0.7, roughness: 0.3 });   // mic can (underside)
     for (const j of [-1, 1]) {
       const py = my + j * L.MIC_ROW_DY;
-      p.box(3 * L.MIC_PITCH, 2.5, L.MIC_SPACER, '#222', mx, py, Z.pcbTop);                // header plastic
+      if (!ALU) p.box(3 * L.MIC_PITCH, 2.5, L.MIC_SPACER, '#222', mx, py, Z.pcbTop);      // header plastic
       for (const i of [-1, 0, 1])
-        p.box(0.64, 0.64, L.MIC_SPACER + L.MIC_PCB_T + Z.pcbTop - Z.pcb + 1.2, '#d4af37', mx + i * L.MIC_PITCH, py, Z.pcb - 1.0,
+        p.box(0.64, 0.64, spacer + L.MIC_PCB_T + Z.pcbTop - Z.pcb + 1.2, '#d4af37', mx + i * L.MIC_PITCH, py, Z.pcb - 1.0,
           { metalness: 0.8, roughness: 0.3 });
     }
   }
@@ -469,13 +484,31 @@ function buildModel(STEP) {
   }
   {
     const p = part('antenna', { name: 'U.FL antenna (XIAO S3)', step: STEP.battery, explode: 8,
-      info: 'Flat antenna stuck to the inside of a wall, cable to the U.FL socket on the XIAO. Keep it clear of the speaker magnet and the battery.' });
-    p.box(0.3, 20, 6, '#b88a2a', L.WALL + 0.3, 112, 6, { metalness: 0.6 });
-    p.wire([[L.WALL + 0.6, 104, 8], [5, 98, 9], [L.XIAO_C[0] + 6.5, L.XIAO_C[1] - 5.5, 11.6]], '#333', 0.3);
+      info: ALU ? 'Flat antenna stuck to the underside of acrylic layer 1 beside the top of the speaker, where no copper or metal is above it: the aluminium shell blocks Bluetooth everywhere else. Test BLE MIDI range.'
+        : 'Flat antenna stuck to the inside of a wall, cable to the U.FL socket on the XIAO. Keep it clear of the speaker magnet and the battery.' });
+    if (ALU) {
+      const ay = (L.SPK_C[1] + 14.1 + L.NOTCH[3]) / 2;   // between the speaker body and the top wall, under the acrylic
+      p.box(20, 6, 0.3, '#b88a2a', 22, ay, Z.plate - 0.3, { metalness: 0.6 });
+      p.wire([[12, ay, Z.plate - 0.5], [4.5, ay - 6, Z.plate - 3], [4.5, L.NOTCH[1] - 2, 12], [L.XIAO_C[0] + 6.5, L.XIAO_C[1] - 5.5, 11.6]], '#333', 0.3);
+    } else {
+      p.box(0.3, 20, 6, '#b88a2a', L.WALL + 0.3, 112, 6, { metalness: 0.6 });
+      p.wire([[L.WALL + 0.6, 104, 8], [5, 98, 9], [L.XIAO_C[0] + 6.5, L.XIAO_C[1] - 5.5, 11.6]], '#333', 0.3);
+    }
   }
 
   // ---- case screws: 4x M3x12 countersunk in the corners. The pot-strip position is a screwless support post.
-  {
+  //      Aluminium + acrylic: black button heads, 4x M3x12 + 1x M3x16 through the knob strip into the fifth boss.
+  if (ALU) {
+    const p = part('screws', { name: 'M3 button-head screws (4× M3×12 + 1× M3×16)', qty: L.HOLES.length, step: STEP.close, explode: 120,
+      info: 'Four corners through acrylic layers 1 + 2, the spacers and the PCB; the fifth through the knob strip by the right-hand knob. All into tapped M3 bosses - snug only, acrylic cracks if overtightened.' });
+    const MS = { metalness: 0.5, roughness: 0.4 }, support = new Set(L.SUPPORT_ONLY || []);
+    L.HOLES.forEach(([x, y], i) => {
+      const top = support.has(i) ? Z.strip : Z.plateTop, len = support.has(i) ? 16 : 12;
+      const head = new THREE.SphereGeometry(2.85, 24, 8, 0, Math.PI * 2, 0, Math.PI / 2); head.scale(1, 1, 1.65 / 2.85); head.rotateX(Math.PI / 2);
+      p.add(head, '#1b1b1d', x, y, top, MS);
+      p.cylZ(1.45, len, '#1b1b1d', x, y, top - len, 12, MS);
+    });
+  } else {
     const support = new Set(L.SUPPORT_ONLY || []);
     const p = part('screws', { name: 'M3×12 countersunk screws (corners)', qty: L.HOLES.length - support.size, step: STEP.close, explode: 120,
       info: 'In the four corners, through the plate and PCB, self-tapping into the shell bosses - snug, not tight.' });

@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const M = window.buildHugboxModel(THREE);
 const G = window.HUGBOX_GUIDE;
+const M = window.buildHugboxModel(THREE, G.CASE);
 const { parts, root, FP, PADNAMES } = M;
 const { screenMat } = M.buildModel(G.STEP);
 const $ = (id) => document.getElementById(id);
@@ -125,6 +125,13 @@ window.addEventListener('keydown', (e) => {
 $('explode').addEventListener('input', (e) => { explodeTarget = +e.target.value; });
 $('xray').addEventListener('change', (e) => {
   for (const id of ['shell', 'plate']) { const p = parts.get(id); if (p.state !== 'hidden') setState(p, e.target.checked ? 'ghost' : 'normal'); }
+});
+// Case menu: printed or aluminium + acrylic. The model and the step text are built for one case, so switch by reloading.
+$('caseSel').value = G.CASE;
+$('caseSel').addEventListener('change', (e) => {
+  try { localStorage.setItem('hugbox-guide-case', e.target.value); } catch (err) {}
+  location.hash = location.hash.replace(/case=\w+&?/, '').replace(/&$/, '');
+  location.reload();
 });
 $('viewTop').addEventListener('click', () => flyTo([[46, 70, 260], [46, 84, 15]]));
 $('viewBottom').addEventListener('click', () => flyTo([[46, 70, -250], [46, 84, 15]]));

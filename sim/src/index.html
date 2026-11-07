@@ -335,6 +335,8 @@
       <div class="row"><label>Fault sim</label>
         <label style="min-width:0"><input type="checkbox" id="noOled"> OLED missing</label>
         <label style="min-width:0"><input type="checkbox" id="noPcf"> PCF8574 missing</label></div>
+      <div class="row"><label for="caseSel">Case</label><select id="caseSel" style="flex:1;min-width:0">
+        <option value="printed">3D-printed shell + plate</option><option value="alu">Aluminium shell + clear acrylic</option></select></div>
       <div class="row"><label>Screen</label>
         <label style="min-width:0"><input type="checkbox" id="rawPanel"> show raw panel orientation (what U8G2_R2 writes)</label></div>
       <div class="row"><label>XIAO LED</label><span class="led" id="led"></span><span class="note">heartbeat, 1 Hz (under the board on the real unit)</span></div>

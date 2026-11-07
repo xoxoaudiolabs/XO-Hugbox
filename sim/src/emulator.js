@@ -35,7 +35,8 @@
     <linearGradient id="plateG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6f3ea"/><stop offset="1" stop-color="#e2ddd0"/></linearGradient>
     <radialGradient id="knobG" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#4a4a4a"/><stop offset="1" stop-color="#1c1c1c"/></radialGradient>
     <linearGradient id="capG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfaf6"/><stop offset="1" stop-color="#dcd8cd"/></linearGradient>
-    <linearGradient id="capS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f39a55"/><stop offset="1" stop-color="#d0631c"/></linearGradient>`;
+    <linearGradient id="capS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f39a55"/><stop offset="1" stop-color="#d0631c"/></linearGradient>
+    <linearGradient id="acrG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".2"/><stop offset=".45" stop-color="#ffffff" stop-opacity=".05"/><stop offset="1" stop-color="#bfe3f5" stop-opacity=".12"/></linearGradient>`;
 
   // wall features: USB-C (XIAO) on the left wall, 3.5 mm jack (PCM5102A) on the right wall
   el('rect', { x: -1.6, y: Y(L.XIAO_C[1]) - 4.6, width: 2.2, height: 9.2, rx: 1, fill: '#3a3d42' });
@@ -45,24 +46,70 @@
   el('text', { x: L.W + 2.6, y: Y(L.JACK_Y), 'font-size': 2.3, fill: '#8a8f96', 'text-anchor': 'middle',
     transform: `rotate(90 ${L.W + 2.6} ${Y(L.JACK_Y)})` }).textContent = 'LINE';
 
-  el('rect', { x: 0, y: 0, width: L.W, height: L.H, rx: 3, fill: 'url(#plateG)', stroke: '#bdb7a8', 'stroke-width': 0.3 });
-  // raised strip over the pots
-  // (same as gen_scad.py: reaches toward the keys far enough to cover the pots' straight solder lugs)
-  const stripFront = L.POT_CAN_D / 2 + L.POT_LUG_L + 2.6;
-  el('rect', { x: L.cx[0] - 10.4, y: Y(L.POT_Y + 10.4), width: L.W - 3 - (L.cx[0] - 10.4), height: 10.4 + stripFront, rx: 2,
-    fill: '#ece7da', stroke: '#c9c2b2', 'stroke-width': 0.25 });
-
-  // screws (countersunk M3); SUPPORT_ONLY holes are hidden support posts under a solid plate
+  // Case: the 3D-printed plate (gPrinted) or the aluminium shell + clear acrylic faceplate (gAlu,
+  // hardware/mechanical/alu_acrylic). Only one group shows; the Case menu in the Board card picks it.
+  const gPrinted = el('g', {}), gAlu = el('g', {});
+  const stripFront = L.POT_CAN_D / 2 + L.POT_LUG_L + 2.6;   // same as gen_scad.py: covers the pots' straight solder lugs
+  const strip = { x: L.cx[0] - 10.4, y: Y(L.POT_Y + 10.4), width: L.W - 3 - (L.cx[0] - 10.4), height: 10.4 + stripFront, rx: 2 };
+  const grille = (fn) => { for (let dx = -10; dx <= 10; dx += 4) for (let dy = -10; dy <= 10; dy += 4) if (dx * dx + dy * dy <= 100) fn(L.SPK_C[0] + dx, Y(L.SPK_C[1] + dy)); };
   const support = new Set(L.SUPPORT_ONLY || []);
+  const [ox, oy] = L.OLED_C;
+  const [px, py] = L.PWR;
+
+  // ---- 3D-printed plate
+  el('rect', { x: 0, y: 0, width: L.W, height: L.H, rx: 3, fill: 'url(#plateG)', stroke: '#bdb7a8', 'stroke-width': 0.3 }, gPrinted);
+  el('rect', { ...strip, fill: '#ece7da', stroke: '#c9c2b2', 'stroke-width': 0.25 }, gPrinted);   // raised strip over the pots
+  // screws (countersunk M3); SUPPORT_ONLY holes are hidden support posts under a solid plate
   for (const [i, [x, y]] of L.HOLES.entries()) {
     if (support.has(i)) continue;
-    el('circle', { cx: x, cy: Y(y), r: 3.0, fill: '#b9bcc0', stroke: '#8d9095', 'stroke-width': 0.25 });
-    el('path', { d: `M${x - 1.6} ${Y(y)}h3.2M${x} ${Y(y) - 1.6}v3.2`, stroke: '#6f7277', 'stroke-width': 0.45 });
+    el('circle', { cx: x, cy: Y(y), r: 3.0, fill: '#b9bcc0', stroke: '#8d9095', 'stroke-width': 0.25 }, gPrinted);
+    el('path', { d: `M${x - 1.6} ${Y(y)}h3.2M${x} ${Y(y) - 1.6}v3.2`, stroke: '#6f7277', 'stroke-width': 0.45 }, gPrinted);
   }
+  grille((x, y) => el('circle', { cx: x, cy: y, r: 1, fill: '#2b2b2b' }, gPrinted));
+  // OLED window in the plate (the glass and the active area are drawn on top)
+  el('rect', { x: ox - L.OLED_WIN[0] / 2, y: Y(oy + L.OLED_WIN_OFF + L.OLED_WIN[1] / 2), width: L.OLED_WIN[0], height: L.OLED_WIN[1], rx: 0.6, fill: '#050608' }, gPrinted);
+  el('rect', { x: px - 2.15, y: Y(py) - 1.05, width: 4.3, height: 2.1, rx: 0.4, fill: '#1a1a1a' }, gPrinted);   // power switch slot
 
-  // speaker grille
-  for (let dx = -10; dx <= 10; dx += 4) for (let dy = -10; dy <= 10; dy += 4)
-    if (dx * dx + dy * dy <= 100) el('circle', { cx: L.SPK_C[0] + dx, cy: Y(L.SPK_C[1] + dy), r: 1, fill: '#2b2b2b' });
+  // ---- aluminium shell + clear acrylic: you see the board and the parts on its top side through the plate
+  {
+    const g = gAlu, I = L.INSET, [nx0, ny0, nx1] = L.NOTCH;
+    el('rect', { x: 0, y: 0, width: L.W, height: L.H, rx: 3, fill: '#151517' }, g);                       // anodized shell
+    const pcb = [[I, I], [L.W - I, I], [L.W - I, L.H - I], [nx1, L.H - I], [nx1, ny0], [nx0, ny0]];
+    el('polygon', { points: pcb.map(([x, y]) => `${x},${Y(y)}`).join(' '), fill: '#1f6b3a' }, g);       // PCB (speaker notch cut out)
+    for (const [x, y] of L.HOLES) el('circle', { cx: x, cy: Y(y), r: 3, fill: '#9da3a8' }, g);         // spacers
+    const [sx, sy] = L.SPK_C;
+    el('rect', { x: sx - 15.5, y: Y(sy + 14.1), width: 31, height: 28.2, rx: 1, fill: '#1d1d1d' }, g);   // speaker
+    el('circle', { cx: sx, cy: Y(sy), r: 10.5, fill: '#2b2b2b' }, g);
+    el('circle', { cx: sx, cy: Y(sy), r: 4, fill: '#3a3a3a' }, g);
+    el('rect', { x: ox - L.OLED_MOD[0] / 2, y: Y(L.OLED_MOD_Y0 + L.OLED_MOD[1]), width: L.OLED_MOD[0], height: L.OLED_MOD[1], fill: '#1e5bd6' }, g);
+    el('rect', { x: ox - L.OLED_GLASS[0] / 2, y: Y(L.OLED_GLASS_Y0 + L.OLED_GLASS[1]), width: L.OLED_GLASS[0], height: L.OLED_GLASS[1], fill: '#050608' }, g);
+    el('circle', { cx: L.MIC_C[0], cy: Y(L.MIC_C[1]), r: L.MIC_D / 2, fill: '#1c1f26' }, g);              // INMP441 module
+    el('rect', { x: px - 4.35, y: Y(py) - 1.85, width: 8.7, height: 3.7, fill: '#c8c8c8' }, g);            // 12D00G body
+    el('rect', { x: px - 2.15, y: Y(py) - 1.05, width: 4.3, height: 2.1, rx: 0.3, fill: '#1a1a1a' }, g);
+    for (let i = 0; i < 4; i++) el('circle', { cx: L.cx[i], cy: Y(L.POT_Y), r: L.POT_CAN_D / 2, fill: '#c8c8c8' }, g);   // pot cans
+    // the acrylic: full sheet, knob strip, cut edges catching the light
+    const edge = { stroke: '#d4eef9', 'stroke-opacity': 0.75, 'stroke-width': 0.35 };
+    el('rect', { x: 0, y: 0, width: L.W, height: L.H, rx: 3, fill: 'url(#acrG)', ...edge, 'stroke-width': 0.6 }, g);
+    el('rect', { ...strip, fill: 'url(#acrG)', ...edge }, g);
+    el('rect', { x: ox - (L.OLED_GLASS[0] + 1) / 2, y: Y(oy + L.OLED_GLASS_OFF + (L.OLED_GLASS[1] + 1) / 2), width: L.OLED_GLASS[0] + 1, height: L.OLED_GLASS[1] + 1, fill: 'none', ...edge }, g);
+    el('rect', { x: px - 4.7, y: Y(py) - 2.2, width: 9.4, height: 4.4, fill: 'none', ...edge }, g);
+    grille((x, y) => el('circle', { cx: x, cy: y, r: 1, fill: '#0c0c0c', ...edge, 'stroke-width': 0.15 }, g));
+    // black M3 button heads: four corners + the fifth through the knob strip
+    for (const [x, y] of L.HOLES) {
+      el('circle', { cx: x, cy: Y(y), r: 2.85, fill: '#1b1b1d', stroke: '#4a4a50', 'stroke-width': 0.3 }, g);
+      el('polygon', { points: [0, 1, 2, 3, 4, 5].map((k) => `${x + Math.cos(k * Math.PI / 3)},${Y(y) + Math.sin(k * Math.PI / 3)}`).join(' '), fill: '#000' }, g);
+    }
+  }
+  const setCase = (c) => { gPrinted.style.display = c === 'alu' ? 'none' : ''; gAlu.style.display = c === 'alu' ? '' : 'none'; };
+  {
+    let c = 'printed';
+    try { c = localStorage.getItem('hugbox-sim-case') || 'printed'; } catch (e) {}
+    $('caseSel').value = c; setCase(c);
+    $('caseSel').addEventListener('change', (e) => {
+      setCase(e.target.value);
+      try { localStorage.setItem('hugbox-sim-case', e.target.value); } catch (err) {}
+    });
+  }
   // mic: the 1.5 mm sound hole over the INMP441, which sits label (port) side up in a pocket under the plate.
   // The ring and the MIC note are the emulator's (like the other grey notes); the printed plate only has the hole.
   const micG = el('g', {});
@@ -72,8 +119,6 @@
   el('text', { x: L.MIC_C[0], y: Y(L.MIC_C[1]) + 4.8, 'font-size': 2.2, fill: '#7d7a72', 'text-anchor': 'middle' }, micG).textContent = 'MIC';
 
   // OLED: window in the plate, glass, then the 128x64 active area (29.42 x 14.7 mm on a 1.3" SH1106)
-  const [ox, oy] = L.OLED_C;
-  el('rect', { x: ox - L.OLED_WIN[0] / 2, y: Y(oy + L.OLED_WIN_OFF + L.OLED_WIN[1] / 2), width: L.OLED_WIN[0], height: L.OLED_WIN[1], rx: 0.6, fill: '#050608' });
   const AW = 29.42, AH = 14.7;
   const fo = el('foreignObject', { x: ox - AW / 2, y: Y(oy + L.OLED_WIN_OFF + AH / 2), width: AW, height: AH });
   const oledCanvas = document.createElement('canvas');
@@ -86,8 +131,6 @@
   const mirrorZoom = () => zctx.drawImage(oledCanvas, 0, 0, 512, 256);
 
   // power slide switch (12D00G), actuator through the plate
-  const [px, py] = L.PWR;
-  el('rect', { x: px - 2.15, y: Y(py) - 1.05, width: 4.3, height: 2.1, rx: 0.4, fill: '#1a1a1a' });
   const pwrKnob = el('rect', { x: px - 0.75, y: Y(py) - 0.75, width: 1.5, height: 1.5, fill: '#d9d9d9', style: 'cursor:pointer' });
   const pwrHit = el('rect', { x: px - 5, y: Y(py) - 3, width: 10, height: 6, fill: 'transparent', style: 'cursor:pointer' });
   const pwrLabel = el('text', { x: px, y: Y(py) - 2.4, 'font-size': 2.2, fill: '#7d7a72', 'text-anchor': 'middle' });

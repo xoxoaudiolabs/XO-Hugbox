@@ -29,6 +29,7 @@
   .toolbar label { color: var(--grey); font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; display: flex; align-items: center; gap: 8px; }
   .toolbar input[type=range] { width: 120px; accent-color: var(--white); }
   .toolbar input[type=checkbox] { accent-color: var(--white); }
+  .toolbar select { font: 600 .7rem var(--mono); color: var(--white); background: #0b0b0b; border: 1px solid var(--rule); padding: .35em .5em; }
   button { font: 600 .7rem var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--white); background: transparent;
     border: 2px solid var(--white); border-radius: 0; padding: .5em .95em; cursor: pointer; }
   button:hover:not(:disabled) { background: var(--white); color: var(--black); }
@@ -107,6 +108,7 @@
   <main id="view">
     <div class="toolbar">
       <label>Explode <input id="explode" type="range" min="0" max="1" step="0.01" value="0"></label>
+      <label>Case <select id="caseSel"><option value="printed">3D-printed</option><option value="alu">Aluminium + acrylic</option></select></label>
       <label><input id="xray" type="checkbox"> X-ray shell + plate</label>
       <button id="viewIso">3/4</button><button id="viewTop">Top</button><button id="viewBottom">Bottom</button>
     </div>
