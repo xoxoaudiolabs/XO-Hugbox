@@ -7,15 +7,18 @@ Read first: [README.md](README.md), [docs/hardware.md](docs/hardware.md), [docs/
 
 ## Status
 
-- Hardware design complete, nothing built yet. Board v1.0 gerbers (silkscreen "XO-HUGBOX v1.0") are the ones being ordered; v1.1 (separate speaker data
-  line) waits on the breadboard test in [docs/speaker-path-plan.md](docs/speaker-path-plan.md).
-- Firmware stages done in code: UI, synth + sampler, projects/sequencer extras, FX, USB + BLE MIDI. None run on hardware.
+- First unit built on a v1.0 board (2026-11-25), on USB without the battery: bring-up passes (OLED 0x3C, PCF8574 0x20,
+  pads, shift, pots, sound) and the instrument firmware runs with audio load avg 11% / peak 21% at idle. The v1.0
+  "V G D C" silk on the PCF I2C pads is wrong (fixed in `build.py` for the next board, not in the v1.0 gerbers); see the
+  build guide. v1.1 (separate speaker data line) waits on the breadboard test in [docs/speaker-path-plan.md](docs/speaker-path-plan.md).
+- Firmware stages done in code: UI, synth + sampler, projects/sequencer extras, FX, USB + BLE MIDI. Only the bring-up
+  test and a first boot of the instrument have run on hardware so far.
 - Both boards carry a 2×3 J_MIC footprint for the INMP441 (label side up on its header, under the plate's sound hole)
   plus J_MTDI for a wire from the XIAO's GPIO41 pad. Mic sampling + the sample editor (ported from XOXO Studio) are
   done in code and the emulator (`lib/hugbox_core/mic.cpp`), not on hardware: see [docs/mic-plan.md](docs/mic-plan.md).
   The firmware uses a custom partition table (first flash erases LittleFS once).
-- Next: measure the mic module's pin-row spacing (it is in copper), bring-up on real parts (check the "audio load"
-  serial line first), then the v1.1 + mic breadboard test.
+- Next: play-test the instrument on the first unit (audio load while playing, MIDI, battery), check the mic, then the
+  v1.1 + mic breadboard test.
 - Emulator checks (after `sim/build_wasm.sh`): `node sim/tools/feature_test.js` (every feature),
   `node sim/tools/sample_test.js` (mic sampling), `node sim/tools/level_test.js` (output levels and limiter).
 

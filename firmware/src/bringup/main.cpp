@@ -18,6 +18,7 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C oled(U8G2_R2, U8X8_PIN_NONE);
 I2SClass i2s;
 
 static bool oledOk = false, pcfOk = false;
+static char lineReport[160] = "";
 static uint16_t padBits = 0;         // bit n = pad n held (n = row*4 + col, row 0 = top)
 static bool shiftHeld = false;
 static uint16_t pots[4];
@@ -139,8 +140,44 @@ void setup() {
   Serial.printf("Chip %s rev %d, flash %u MB, PSRAM %u KB\n", ESP.getChipModel(), ESP.getChipRevision(),
                 ESP.getFlashChipSize() >> 20, ESP.getPsramSize() >> 10);
 
+  // I2C line check: idle lines should read HIGH from the module pull-ups alone. LOW with the internal pull-up on
+  // too means the line is shorted or held low; LOW without and HIGH with means the module pull-ups are missing.
+  pinMode(PIN_SDA, INPUT); pinMode(PIN_SCL, INPUT); delay(5);
+  const int sda0 = digitalRead(PIN_SDA), scl0 = digitalRead(PIN_SCL);
+  pinMode(PIN_SDA, INPUT_PULLUP); pinMode(PIN_SCL, INPUT_PULLUP); delay(5);
+  const int sda1 = digitalRead(PIN_SDA), scl1 = digitalRead(PIN_SCL);
+  // With the internal pull-down (~45k) a line only stays HIGH if a module's pull-up (2-10k) reaches it, so this
+  // shows whether the XIAO pin is actually joined to the OLED / PCF without a multimeter.
+  pinMode(PIN_SDA, INPUT_PULLDOWN); pinMode(PIN_SCL, INPUT_PULLDOWN); delay(5);
+  const int sda2 = digitalRead(PIN_SDA), scl2 = digitalRead(PIN_SCL);
+  // Drive one line low (open drain, input still on) and read both: the driven line must follow (else it is shorted
+  // to 3V3), the other must stay HIGH (else SDA and SCL are bridged).
+  auto pullLow = [](int drive, int other, int &self, int &peer) {
+    pinMode(other, INPUT_PULLUP);
+    gpio_set_direction((gpio_num_t)digitalPinToGPIONumber(drive), GPIO_MODE_INPUT_OUTPUT_OD);
+    gpio_set_level((gpio_num_t)digitalPinToGPIONumber(drive), 0); delayMicroseconds(200);
+    self = digitalRead(drive); peer = digitalRead(other);
+    gpio_set_level((gpio_num_t)digitalPinToGPIONumber(drive), 1); pinMode(drive, INPUT_PULLUP);
+  };
+  int sdaSelf, sdaPeer, sclSelf, sclPeer;
+  pullLow(PIN_SDA, PIN_SCL, sdaSelf, sdaPeer);
+  pullLow(PIN_SCL, PIN_SDA, sclSelf, sclPeer);
+
   Wire.begin(PIN_SDA, PIN_SCL, 400000);
   i2cScan();
+  // Printed after the scan so it is still on screen when the USB serial port is opened late.
+  Serial.printf("I2C lines: SDA %s/%s/%s  SCL %s/%s/%s  (floating / internal pull-up / internal pull-down)\n",
+                sda0 ? "HIGH" : "LOW", sda1 ? "HIGH" : "LOW", sda2 ? "HIGH" : "LOW",
+                scl0 ? "HIGH" : "LOW", scl1 ? "HIGH" : "LOW", scl2 ? "HIGH" : "LOW");
+  Serial.printf("  pull-down test: SDA %s, SCL %s\n", sda2 ? "module pull-up reached" : "NOTHING CONNECTED",
+                scl2 ? "module pull-up reached" : "NOTHING CONNECTED");
+  Serial.printf("  SDA pulled low: SDA %s SCL %s   SCL pulled low: SCL %s SDA %s\n", sdaSelf ? "HIGH" : "LOW",
+                sdaPeer ? "HIGH" : "LOW", sclSelf ? "HIGH" : "LOW", sclPeer ? "HIGH" : "LOW");
+  snprintf(lineReport, sizeof lineReport, "idle SDA %d SCL %d, pull-down SDA %d SCL %d, SDA low->%d/%d, SCL low->%d/%d",
+           sda1, scl1, sda2, scl2, sdaSelf, sdaPeer, sclSelf, sclPeer);
+  if (sdaSelf || sclSelf) Serial.println("  -> a line will not go low: shorted to 3V3/VCC");
+  else if (!sdaPeer || !sclPeer) Serial.println("  -> SDA and SCL are BRIDGED together");
+  else Serial.println("  -> lines drive and release cleanly, not bridged");
   if (pcfOk) pcfWrite(0xFF);
   if (oledOk) {
     oled.setI2CAddress(OLED_ADDR << 1);
@@ -193,6 +230,12 @@ void loop() {
     drawOled();
     digitalWrite(LED_BUILTIN, (now / 500) & 1);       // heartbeat (LED is active low)
     static uint32_t lastBat = 0;
-    if (now - lastBat >= 5000) { lastBat = now; Serial.printf("battery %.2f V\n", vbat); }
+    if (now - lastBat >= 5000) {
+      lastBat = now;
+      Serial.printf("battery %.2f V   OLED %s  PCF8574 %s   I2C now:", vbat, oledOk ? "OK" : "MISSING",
+                    pcfOk ? "OK" : "MISSING");
+      for (uint8_t a = 1; a < 127; a++) if (i2cPresent(a)) Serial.printf(" 0x%02X", a);
+      Serial.printf("\n  lines: %s\n", lineReport);
+    }
   }
 }

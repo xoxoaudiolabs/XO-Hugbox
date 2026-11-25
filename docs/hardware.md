@@ -4,7 +4,7 @@ One 2-layer PCB, a 3D-printed top plate and bottom shell, and off-the-shelf modu
 from one file, [`hardware/layout.py`](../hardware/layout.py); the board, plate, shell, emulator drawing and build guide are
 all generated from it.
 
-> **Status:** prototype. The design is complete but not yet built. Measure the parts listed under
+> **Status:** prototype. The first unit is built and passes bring-up (v1.0 board). Measure the parts listed under
 > [Check before ordering](#check-before-ordering) first.
 
 ## Parts
@@ -12,7 +12,7 @@ all generated from it.
 | Qty | Part | Notes |
 |---|---|---|
 | 1 | Seeed **XIAO ESP32-S3** | Must be the S3 (native USB MIDI, 8 MB PSRAM). U.FL antenna stuck to the inside of a wall. |
-| 1 | **PCF8574T** I/O expander module | P0-P7 header into the board. Desolder the pass-through socket; replace the address jumper caps with solder bridges. The I2C pins go to the 2×2 "PCF I2C" pads with short wires. |
+| 1 | **PCF8574T** I/O expander module | P0-P7 header into the board. Desolder the pass-through socket; replace the address jumper caps with solder bridges. The I2C pins go to the 2×2 "PCF I2C" pads with short wires: seen from the back with "PCF I2C" below, top row SCL · SDA, bottom row GND · VCC. On v1.0 boards ignore the one-row "V G D C" silk, which does not match the pads. |
 | 1 | **MAX98357A** I2S amp (generic 7-pin: LRC BCLK DIN GAIN SD GND VIN) | Header from the plain side, printed side facing the floor. GAIN floating = 9 dB, SD default (on, L+R mono). |
 | 1 | **PCM5102A** I2S DAC (purple module) | Printed side down along the right wall, jack out of the right wall. Jumpers: FLT L, DEMP L, XSMT H, FMT L. SCK is tied to GND on the PCB. |
 | 1 | 1.3" **SH1106** I2C OLED, 128×64 (35.4×33.5 mm, GND VCC SCK SDA) | Remove the header plastic; solder 0.8 mm above the board. |

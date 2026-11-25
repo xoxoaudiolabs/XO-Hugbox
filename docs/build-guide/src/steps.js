@@ -155,9 +155,14 @@ window.HUGBOX_GUIDE = (() => {
           which is what <code>pins.h</code> expects.</li>
           <li>P0–P7 header into the board, module upside down: <b>P0 pin on the P0 pad</b> ("PCF8574: P0 on P0" on the silk).
           P0–P3 are rows R0–R3, P4–P7 columns C0–C3.</li>
-          <li>The module's right-angle I2C pins go to the 2×2 <b>"PCF I2C"</b> pads (V G / D C) with <b>four short wires</b>:
-          VCC→V, GND→G, SDA→D, SCL→C. Check the labels on your module - pin order varies between batches.</li>
+          <li>The module's right-angle I2C pins go to the 2×2 <b>"PCF I2C"</b> pads with <b>four short wires</b>. Seen from the
+          back (the side you solder on), with the "PCF I2C" text below the pads:
+          <b>top row SCL · SDA, bottom row GND · VCC</b>. Go by the names printed next to the pins the wires are soldered
+          to: the module's two I2C ends are labelled in opposite orders.</li>
         </ol>
+        <div class="callout warn"><b>v1.0 boards: ignore the "V G D C" silk.</b> It is printed as one row and does not line up
+        with the 2×2 pads. Wiring by it puts VCC on SCL: the I2C bus then times out and neither the OLED nor the PCF8574 is
+        found.</div>
         <div class="callout fix"><b>Not the PCM5102A yet.</b> Leave it off for now: the shift and power-switch pins come through
         the board right where it sits (step 9).</div>
         <div class="callout warn"><b>Mic first.</b> The mic (step 4) must already be soldered and its pins clipped flush: they are

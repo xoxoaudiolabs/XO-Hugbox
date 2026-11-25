@@ -137,7 +137,11 @@ custom("U2",[(f"P{i}",rx-8.89+2.54*i,ry,pn[i]) for i in range(8)],lab_dy=-1.9,st
 text("PCF8574: P0 on P0",rx,ry-6.5,1.0)
 custom("J9",[(n,63.6+2.54*(i%2),104.6+2.54*(i//2),nn) for i,(n,nn) in enumerate([("VCC","3V3"),("GND","GND"),("SDA","SDA"),("SCL","SCL")])],
        size=1.6,labels=False)
-text("PCF I2C",64.9,102.6,0.8); text("V G  D C",64.9,109.6,0.7)
+# one label per pad (back silk, so it reads correctly from the back where the wires are soldered); v1.0 had a single
+# "V G  D C" row that did not line up with the 2x2 pads and led to VCC being wired to SCL on the first build
+for (n,x,y) in [("V",63.6,104.6),("G",66.14,104.6),("D",63.6,107.14),("C",66.14,107.14)]:
+    text(n, x+(-1.4 if x<65 else 1.4), y, 0.7)
+text("PCF I2C",64.9,102.6,0.8)
 
 # ---- PCM5102A (bottom, printed side down, jack out the right wall). SCK..VIN x increasing ----
 pc=[("SCK","GND"),("BCK","BCK"),("DIN","DIN"),("LCK","LRCK"),("GND","GND"),("VIN","3V3")]
